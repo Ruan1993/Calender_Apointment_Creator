@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gemini Nail Scheduler</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Inter font -->
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
       rel="stylesheet"
     />
-    <!-- Font Awesome for Icons -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
@@ -67,9 +65,7 @@
     </style>
   </head>
   <body>
-    <!-- Main App Container -->
     <div id="app" class="flex flex-col bg-white">
-      <!-- Header -->
       <header class="p-4 bg-indigo-600 text-white shadow-md flex-shrink-0">
         <h1 class="text-xl font-bold">Nail Appointment Pro</h1>
         <p class="text-sm opacity-80 mt-1">
@@ -82,9 +78,7 @@
         ></p>
       </header>
 
-      <!-- Main Content Area (Scrollable) -->
       <main class="flex-grow overflow-y-auto p-3" id="main-content">
-        <!-- Loading Indicator -->
         <div
           id="loading"
           class="flex flex-col items-center justify-center h-full text-indigo-500"
@@ -93,21 +87,18 @@
           <i class="fas fa-spinner fa-spin text-3xl"></i>
           <p class="mt-3 text-lg font-medium">Loading App and Database...</p>
         </div>
-        <!-- Views will be rendered here dynamically based on navigation -->
         <div id="calendar-view" class="hidden"></div>
         <div id="upcoming-view" class="hidden"></div>
         <div id="add-appointment-view" class="hidden"></div>
         <div id="service-management-view" class="hidden"></div>
       </main>
 
-      <!-- Message Box (Toast Notifications) -->
       <div
         id="message-box"
         class="fixed top-0 left-0 right-0 z-50 p-4 hidden"
         style="max-width: 480px; margin: 0 auto"
       ></div>
 
-      <!-- Custom Confirmation Modal -->
       <div
         id="confirm-modal"
         class="fixed inset-0 z-40 hidden"
@@ -181,7 +172,6 @@
         </div>
       </div>
 
-      <!-- Bottom Navigation (Updated to include 'Upcoming') -->
       <nav
         class="flex-shrink-0 bg-white border-t border-gray-200 shadow-2xl z-20"
       >
@@ -222,7 +212,6 @@
       </nav>
     </div>
 
-    <!-- Firebase SDK Scripts -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
       import {
@@ -270,7 +259,25 @@
       window.setLogLevel = setLogLevel;
     </script>
 
-    <!-- Application Logic -->
+    <script>
+      // --- Firebase Configuration for App Initialization ---
+      // This configuration was obtained from the user's Firebase Console.
+      window.__app_id = "calender-appointment-creator";
+
+      const REAL_FIREBASE_CONFIG = {
+        apiKey: "AIzaSyB0wD7gK-0rgFkR1D7OtbzIT8",
+        authDomain: "calender-appointment-creator.firebaseapp.com",
+        projectId: "calender-appointment-creator",
+        storageBucket: "calender-appointment-creator.appspot.com",
+        messagingSenderId: "976887592733",
+        appId: "1:976887592733:web:97ee6118678c01138993f4",
+        measurementId: "G-X84XF3B1KZ",
+      };
+
+      // The application code expects a JSON string in __firebase_config
+      window.__firebase_config = JSON.stringify(REAL_FIREBASE_CONFIG);
+      window.__initial_auth_token = null;
+    </script>
     <script type="module">
       setLogLevel("Debug"); // Enable Firestore logging
 
@@ -1119,7 +1126,7 @@
                       <span class="text-lg font-bold block">${day.getDate()}</span>
                       ${
                         apptCount > 0
-                          ? `<span class="block text-xs leading-none w-1.5 h-1.5 rounded-full mx-auto ${
+                          ? `<span class="block text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
                               isSelected ? "bg-white" : "bg-green-500"
                             }"></span>`
                           : ""
@@ -1187,12 +1194,10 @@
                     <button onclick="changeMonth(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
                 </div>
 
-                <!-- Days of the week header -->
                 <div class="grid grid-cols-7 text-center text-sm font-medium text-gray-500 border-b pb-2">
                     ${daysOfWeek.map((day) => `<span>${day}</span>`).join("")}
                 </div>
 
-                <!-- Calendar Grid -->
                 <div class="grid grid-cols-7 gap-1 mt-2">
             `;
 
@@ -1367,13 +1372,11 @@
                     <h2 class="text-2xl font-bold text-gray-800 mb-6">Book New Appointment</h2>
                     <form onsubmit="saveAppointment(event)" id="appointment-form" class="space-y-4">
                         
-                        <!-- Client Name -->
                         <div>
                             <label for="clientName" class="block text-sm font-medium text-gray-700 mb-1">Client Name <span class="text-red-500">*</span></label>
                             <input type="text" id="clientName" name="clientName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Jane Doe">
                         </div>
 
-                        <!-- Service Selector (Checkboxes) -->
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Select Services (Multiple allowed) <span class="text-red-500">*</span></label>
                             <div id="service-options-container" class="border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white shadow-sm divide-y">
@@ -1385,7 +1388,6 @@
                             </div>
                         </div>
 
-                        <!-- Date and Time Group -->
                         <div class="flex space-x-3">
                             <div class="w-1/2">
                                 <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
@@ -1397,7 +1399,6 @@
                             </div>
                         </div>
 
-                        <!-- Duration (Auto-filled) -->
                         <div>
                             <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes)</label>
                             <input type="number" id="duration" name="duration" min="5" value="30" readonly 
@@ -1405,13 +1406,11 @@
                             <p class="text-xs text-gray-500 mt-1">Duration sums up based on the selected services.</p>
                         </div>
                         
-                        <!-- Notes -->
                         <div>
                             <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                             <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
                         </div>
 
-                        <!-- Submit Button -->
                         <button type="submit" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
                             <i class="fas fa-calendar-plus mr-2"></i> Save Appointment
                         </button>
@@ -1464,18 +1463,15 @@
                       isEditing ? "Edit Service" : "Add New Service"
                     }</h2>
                     
-                    <!-- Service Add/Edit Form -->
                     <form onsubmit="saveService(event)" id="service-form" class="space-y-4 bg-white p-5 rounded-xl shadow-lg mb-6 border border-indigo-100" ${
                       isEditing ? `data-editing-id="${isEditing}"` : ""
                     }>
                         
-                        <!-- Service Name -->
                         <div>
                             <label for="serviceName" class="block text-sm font-medium text-gray-700 mb-1">Service Name <span class="text-red-500">*</span></label>
                             <input type="text" id="serviceName" name="serviceName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Gel Manicure">
                         </div>
 
-                        <!-- Duration -->
                         <div>
                             <label for="serviceDuration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
                             <input type="number" id="serviceDuration" name="serviceDuration" required min="5" value="30" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
