@@ -259,12 +259,15 @@
       window.setLogLevel = setLogLevel;
     </script>
 
-    <script>
-      // --- Firebase Configuration for App Initialization ---
-      // This configuration was obtained from the user's Firebase Console.
-      window.__app_id = "calender-appointment-creator";
+    <script type="module">
+      setLogLevel("Debug"); // Enable Firestore logging
 
-      const REAL_FIREBASE_CONFIG = {
+      // ------------------------------------------------------------------
+      // 👇 HARDCODED CONFIGURATION TO GUARANTEE KEY LOADING - FIXES ERROR 👇
+      // ------------------------------------------------------------------
+      const appId = "calender-appointment-creator"; // Project ID
+
+      const FIREBASE_CONFIG_OBJECT = {
         apiKey: "AIzaSyB0wD7gK-0rgFkR1D7OtbzIT8",
         authDomain: "calender-appointment-creator.firebaseapp.com",
         projectId: "calender-appointment-creator",
@@ -274,12 +277,9 @@
         measurementId: "G-X84XF3B1KZ",
       };
 
-      // The application code expects a JSON string in __firebase_config
-      window.__firebase_config = JSON.stringify(REAL_FIREBASE_CONFIG);
-      window.__initial_auth_token = null;
-    </script>
-    <script type="module">
-      setLogLevel("Debug"); // Enable Firestore logging
+      const firebaseConfig = FIREBASE_CONFIG_OBJECT;
+      const initialAuthToken = null;
+      // ------------------------------------------------------------------
 
       let db, auth;
       let userId = "unknown";
@@ -294,17 +294,6 @@
         currentView: "calendar",
         isAuthReady: false,
       };
-
-      const appId =
-        typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-      const firebaseConfig =
-        typeof __firebase_config !== "undefined"
-          ? JSON.parse(__firebase_config)
-          : null;
-      const initialAuthToken =
-        typeof __initial_auth_token !== "undefined"
-          ? __initial_auth_token
-          : null;
 
       /** Utility Functions **/
 
@@ -426,6 +415,7 @@
 
       async function initApp() {
         if (!firebaseConfig) {
+          // This should never happen with the hardcoded fix, but is a safe fallback
           console.error("Firebase config is missing.");
           showLoading(false);
           displayMessage(
@@ -438,6 +428,15 @@
 
         try {
           const app = initializeApp(firebaseConfig);
+          const { getAuth } = window; // Use imported functions
+          const { getFirestore } = window; // Use imported functions
+          const {
+            setPersistence,
+            browserLocalPersistence,
+            signInAnonymously,
+            onAuthStateChanged,
+          } = window;
+
           db = getFirestore(app);
           auth = getAuth(app);
 
@@ -447,7 +446,7 @@
 
           // 1. Sign in
           if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
+            await window.signInWithCustomToken(auth, initialAuthToken);
           } else {
             await signInAnonymously(auth);
           }
@@ -494,7 +493,7 @@
           return null;
         }
         // Private data path: /artifacts/{appId}/users/{userId}/appointments
-        return collection(
+        return window.collection(
           db,
           `artifacts/${appId}/users/${userId}/appointments`
         );
@@ -504,9 +503,9 @@
         const appointmentsRef = getAppointmentsRef();
         if (!appointmentsRef) return;
 
-        const q = query(appointmentsRef);
+        const q = window.query(appointmentsRef);
 
-        onSnapshot(
+        window.onSnapshot(
           q,
           (snapshot) => {
             let fetchedAppointments = snapshot.docs.map((doc) => ({
@@ -584,7 +583,7 @@
           time: form.time.value,
           duration: totalDuration, // New: Sum of all selected services
           notes: form.notes.value.trim(),
-          timestamp: serverTimestamp(),
+          timestamp: window.serverTimestamp(),
         };
 
         try {
@@ -600,7 +599,7 @@
             return;
           }
 
-          await setDoc(doc(appointmentsRef), newAppointment);
+          await window.setDoc(window.doc(appointmentsRef), newAppointment);
 
           // Reset form and switch view
           form.reset();
@@ -630,8 +629,8 @@
         if (!confirmed) return;
 
         try {
-          const docRef = doc(appointmentsRef, id);
-          await deleteDoc(docRef);
+          const docRef = window.doc(appointmentsRef, id);
+          await window.deleteDoc(docRef);
           displayMessage("Appointment deleted successfully.");
         } catch (error) {
           console.error("Error deleting appointment:", error);
@@ -652,16 +651,19 @@
           return null;
         }
         // Private data path: /artifacts/{appId}/users/{userId}/services
-        return collection(db, `artifacts/${appId}/users/${userId}/services`);
+        return window.collection(
+          db,
+          `artifacts/${appId}/users/${userId}/services`
+        );
       }
 
       function listenForServices() {
         const servicesRef = getServicesRef();
         if (!servicesRef) return;
 
-        const q = query(servicesRef, orderBy("name", "asc"));
+        const q = window.query(servicesRef, window.orderBy("name", "asc"));
 
-        onSnapshot(
+        window.onSnapshot(
           q,
           (snapshot) => {
             window.state.services = snapshot.docs.map((doc) => ({
@@ -709,15 +711,18 @@
         const serviceData = {
           name: serviceName,
           duration: serviceDuration,
-          timestamp: serverTimestamp(),
+          timestamp: window.serverTimestamp(),
         };
 
         try {
           if (serviceId) {
-            await updateDoc(doc(servicesRef, serviceId), serviceData);
+            await window.updateDoc(
+              window.doc(servicesRef, serviceId),
+              serviceData
+            );
             displayMessage(`Service "${serviceName}" updated successfully!`);
           } else {
-            await setDoc(doc(servicesRef), serviceData);
+            await window.setDoc(window.doc(servicesRef), serviceData);
             displayMessage(`Service "${serviceName}" added successfully!`);
           }
 
@@ -752,7 +757,7 @@
         if (!servicesRef) return;
 
         try {
-          await deleteDoc(doc(servicesRef, id));
+          await window.deleteDoc(window.doc(servicesRef, id));
           displayMessage(`Service "${name}" deleted.`);
         } catch (error) {
           console.error("Error deleting service:", error);
@@ -1235,7 +1240,7 @@
                         <span class="text-lg leading-none">${i}</span>
                         ${
                           apptCount > 0
-                            ? `<span class="text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full ${
+                            ? `<span class="text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
                                 isSelected ? "bg-white" : "bg-green-500"
                               }"></span>`
                             : ""
