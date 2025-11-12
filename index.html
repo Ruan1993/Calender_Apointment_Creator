@@ -260,7 +260,7 @@
     </script>
 
     <script type="module">
-      setLogLevel("Debug"); // Enable Firestore logging
+      setLogLevel("debug");
 
       // ------------------------------------------------------------------
       // 👇 HARDCODED CONFIGURATION TO GUARANTEE KEY LOADING - FIXES ERROR 👇
@@ -269,7 +269,7 @@
       const appId = "calender-appointment-creator"; // Project ID
 
       const FIREBASE_CONFIG_OBJECT = {
-        apiKey: "AIzaSyB6hKAJJwaGrkoAcYR0gfkR1d7OtbzIt8",
+        apiKey: "AIzaSyB6hKAJJwaGrkoAcY0r0gfkR1d7OtbzIt8",
         authDomain: "calender-apointment-creator.firebaseapp.com",
         projectId: "calender-apointment-creator",
         storageBucket: "calender-apointment-creator.firebasestorage.app",
@@ -480,7 +480,15 @@
           });
         } catch (error) {
           console.error("Firebase initialization or sign-in failed:", error);
-          displayMessage(`Auth Error: ${error.message}`, "error", 10000);
+          const code = error && error.code ? String(error.code) : "unknown";
+          let hint = "";
+          if (code.includes("invalid-api-key") || code.includes("api-key-not-valid")) {
+            hint =
+              "Check Firebase Web App config: use the Web API key from Project Settings -> General, and ensure your deployed domain is listed under Authentication -> Settings -> Authorized domains.";
+          } else if (code.includes("operation-not-allowed")) {
+            hint = "Enable Anonymous sign-in in Firebase Authentication -> Sign-in method.";
+          }
+          displayMessage(`Auth Error: ${error.message}${hint ? "\n" + hint : ""}`, "error", 12000);
           showLoading(false);
         }
       }
