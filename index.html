@@ -269,10 +269,10 @@
       const appId = "calender-appointment-creator"; // Project ID
 
       const FIREBASE_CONFIG_OBJECT = {
-        apiKey: "AIzaSyB0wD7gK-0rgFkR1D7OtbzIT8",
-        authDomain: "calender-appointment-creator.firebaseapp.com",
-        projectId: "calender-appointment-creator",
-        storageBucket: "calender-appointment-creator.appspot.com",
+        apiKey: "AIzaSyB6hKAJJwaGrkoAcYR0gfkR1d7OtbzIt8",
+        authDomain: "calender-apointment-creator.firebaseapp.com",
+        projectId: "calender-apointment-creator",
+        storageBucket: "calender-apointment-creator.firebasestorage.app",
         messagingSenderId: "976887592733",
         appId: "1:976887592733:web:97ee6118678c01138993f4",
         measurementId: "G-X84XF3B1KZ",
@@ -339,8 +339,8 @@
         box.innerHTML = `<div class="rounded-lg p-3 text-sm text-white shadow-lg ${
           type === "error" ? "bg-red-500" : "bg-green-500"
         }">
-                ${message}
-            </div>`;
+                      ${message}
+                  </div>`;
         box.classList.remove("hidden");
         setTimeout(() => box.classList.add("hidden"), duration);
       }
@@ -958,52 +958,54 @@
         );
 
         let listHTML = `
-                <div class="mt-8">
-                    <h3 class="${
-                      isCompact ? "text-lg" : "text-xl"
-                    } font-bold text-gray-800 mb-3 border-b pb-2">${displayTitle}</h3>
-                    <div class="appointment-list-container ${
-                      isCompact ? "max-h-full" : "max-h-[30vh]"
-                    } overflow-y-auto pr-2">
-            `;
+                      <div class="mt-8">
+                          <h3 class="${
+                            isCompact ? "text-lg" : "text-xl"
+                          } font-bold text-gray-800 mb-3 border-b pb-2">${displayTitle}</h3>
+                          <div class="appointment-list-container ${
+                            isCompact ? "max-h-full" : "max-h-[30vh]"
+                          } overflow-y-auto pr-2">
+                  `;
 
         if (appts.length === 0) {
           listHTML += `
-                    <div class="text-center py-5 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                        <i class="fas fa-calendar-check text-2xl text-gray-300"></i>
-                        <p class="mt-1 text-sm text-gray-600">No appointments.</p>
-                    </div>
-                `;
+                          <div class="text-center py-5 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                              <i class="fas fa-calendar-check text-2xl text-gray-300"></i>
+                              <p class="mt-1 text-sm text-gray-600">No appointments.</p>
+                          </div>
+                      `;
         } else {
           appts.forEach((appt) => {
             // Determine service name display: use the new multi-service string, or fallback to old single service name
             const serviceDisplay = appt.service || "Service N/A";
 
             listHTML += `
-                        <div class="bg-white p-3 mb-2 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
-                            <div class="flex-grow">
-                                <p class="text-xs font-semibold uppercase text-indigo-500">${serviceDisplay}</p>
-                                <h4 class="text-base font-bold text-gray-900">${
-                                  appt.clientName
-                                }</h4>
-                                <div class="text-xs text-gray-600 mt-1">
-                                    <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${
-                                      appt.time
-                                    } (${appt.duration || 30} min)</span></p>
-                                    ${
-                                      appt.notes && !isCompact
-                                        ? `<p class="mt-1 text-xs italic text-gray-500"><i class="fas fa-sticky-note w-3 text-center"></i> ${appt.notes}</p>`
-                                        : ""
-                                    }
-                                </div>
-                            </div>
-                            <button onclick="deleteAppointment('${
-                              appt.id
-                            }')" class="text-red-400 hover:text-red-600 transition p-1 ml-2 focus:outline-none" title="Delete Appointment">
-                                <i class="fas fa-trash-alt text-base"></i>
-                            </button>
-                        </div>
-                    `;
+                              <div class="bg-white p-3 mb-2 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
+                                  <div class="flex-grow">
+                                      <p class="text-xs font-semibold uppercase text-indigo-500">${serviceDisplay}</p>
+                                      <h4 class="text-base font-bold text-gray-900">${
+                                        appt.clientName
+                                      }</h4>
+                                      <div class="text-xs text-gray-600 mt-1">
+                                          <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${
+                                            appt.time
+                                          } (${
+              appt.duration || 30
+            } min)</span></p>
+                                          ${
+                                            appt.notes && !isCompact
+                                              ? `<p class="mt-1 text-xs italic text-gray-500"><i class="fas fa-sticky-note w-3 text-center"></i> ${appt.notes}</p>`
+                                              : ""
+                                          }
+                                      </div>
+                                  </div>
+                                  <button onclick="deleteAppointment('${
+                                    appt.id
+                                  }')" class="text-red-400 hover:text-red-600 transition p-1 ml-2 focus:outline-none" title="Delete Appointment">
+                                      <i class="fas fa-trash-alt text-base"></i>
+                                  </button>
+                              </div>
+                          `;
           });
         }
 
@@ -1020,24 +1022,24 @@
         const mode = window.state.calendarMode;
 
         const modeSelectorHTML = `
-            <div class="flex justify-center space-x-2 mb-4 bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
-                <button onclick="setCalendarMode('day')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
-                  mode === "day"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "text-gray-700 hover:bg-white"
-                }">Day</button>
-                <button onclick="setCalendarMode('week')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
-                  mode === "week"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "text-gray-700 hover:bg-white"
-                }">Week</button>
-                <button onclick="setCalendarMode('month')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
-                  mode === "month"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "text-gray-700 hover:bg-white"
-                }">Month</button>
-            </div>
-        `;
+                  <div class="flex justify-center space-x-2 mb-4 bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
+                      <button onclick="setCalendarMode('day')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
+                        mode === "day"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-gray-700 hover:bg-white"
+                      }">Day</button>
+                      <button onclick="setCalendarMode('week')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
+                        mode === "week"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-gray-700 hover:bg-white"
+                      }">Week</button>
+                      <button onclick="setCalendarMode('month')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
+                        mode === "month"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-gray-700 hover:bg-white"
+                      }">Month</button>
+                  </div>
+              `;
 
         container.innerHTML = modeSelectorHTML;
 
@@ -1067,12 +1069,12 @@
 
         // Navigation for Day View
         const navHTML = `
-              <div class="mb-4 flex justify-between items-center px-2">
-                  <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
-                  <h2 class="text-xl font-semibold text-gray-800 text-center">${selectedDateDisplay}</h2>
-                  <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
-              </div>
-          `;
+                    <div class="mb-4 flex justify-between items-center px-2">
+                        <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                        <h2 class="text-xl font-semibold text-gray-800 text-center">${selectedDateDisplay}</h2>
+                        <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                `;
 
         return (
           navHTML +
@@ -1096,12 +1098,12 @@
         });
 
         const navHTML = `
-              <div class="mb-4 flex justify-between items-center px-2">
-                  <button onclick="changeSelectedDate(-7)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
-                  <h2 class="text-xl font-semibold text-gray-800">${weekStartDisplay} - ${weekEndDisplay}</h2>
-                  <button onclick="changeSelectedDate(7)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
-              </div>
-          `;
+                    <div class="mb-4 flex justify-between items-center px-2">
+                        <button onclick="changeSelectedDate(-7)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                        <h2 class="text-xl font-semibold text-gray-800">${weekStartDisplay} - ${weekEndDisplay}</h2>
+                        <button onclick="changeSelectedDate(7)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                `;
 
         let weekCalendarHTML = `<div class="grid grid-cols-7 text-center text-sm font-medium text-gray-500 border-b pb-2 mb-2">`;
         let weekApptListHTML = `<div class="space-y-4">`;
@@ -1119,25 +1121,25 @@
 
           // Day Headers (clickable to select the day and show its list)
           weekCalendarHTML += `
-                  <div onclick="changeSelectedDate(${
-                    i - (selectedDate.getDay() - startOfWeek.getDay())
-                  })" 
-                       class="p-1 cursor-pointer ${
-                         isSelected
-                           ? "bg-indigo-600 text-white rounded-lg shadow"
-                           : "text-gray-800 hover:bg-gray-100 rounded-lg"
-                       }">
-                      <span class="text-xs block">${dayOfWeek}</span>
-                      <span class="text-lg font-bold block">${day.getDate()}</span>
-                      ${
-                        apptCount > 0
-                          ? `<span class="block text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
-                              isSelected ? "bg-white" : "bg-green-500"
-                            }"></span>`
-                          : ""
-                      }
-                  </div>
-              `;
+                        <div onclick="changeSelectedDate(${
+                          i - (selectedDate.getDay() - startOfWeek.getDay())
+                        })"
+                             class="p-1 cursor-pointer ${
+                               isSelected
+                                 ? "bg-indigo-600 text-white rounded-lg shadow"
+                                 : "text-gray-800 hover:bg-gray-100 rounded-lg"
+                             }">
+                            <span class="text-xs block">${dayOfWeek}</span>
+                            <span class="text-lg font-bold block">${day.getDate()}</span>
+                            ${
+                              apptCount > 0
+                                ? `<span class="block text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
+                                    isSelected ? "bg-white" : "bg-green-500"
+                                  }"></span>`
+                                : ""
+                            }
+                        </div>
+                    `;
 
           // Appointment List for the selected day only
           if (isSelected) {
@@ -1193,18 +1195,20 @@
         );
 
         let calendarHTML = `
-                <div class="mb-4 flex justify-between items-center px-2">
-                    <button onclick="changeMonth(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
-                    <h2 class="text-2xl font-semibold text-gray-800">${monthName} ${year}</h2>
-                    <button onclick="changeMonth(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
-                </div>
+                      <div class="mb-4 flex justify-between items-center px-2">
+                          <button onclick="changeMonth(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                          <h2 class="text-2xl font-semibold text-gray-800">${monthName} ${year}</h2>
+                          <button onclick="changeMonth(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
+                      </div>
 
-                <div class="grid grid-cols-7 text-center text-sm font-medium text-gray-500 border-b pb-2">
-                    ${daysOfWeek.map((day) => `<span>${day}</span>`).join("")}
-                </div>
+                      <div class="grid grid-cols-7 text-center text-sm font-medium text-gray-500 border-b pb-2">
+                          ${daysOfWeek
+                            .map((day) => `<span>${day}</span>`)
+                            .join("")}
+                      </div>
 
-                <div class="grid grid-cols-7 gap-1 mt-2">
-            `;
+                      <div class="grid grid-cols-7 gap-1 mt-2">
+                  `;
 
         let dayCounter = 1;
         let currentDayDate;
@@ -1236,17 +1240,17 @@
           }
 
           calendarHTML += `
-                    <div onclick="selectDate(${i})" class="${classes}" role="button" aria-pressed="${isSelected}">
-                        <span class="text-lg leading-none">${i}</span>
-                        ${
-                          apptCount > 0
-                            ? `<span class="text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
-                                isSelected ? "bg-white" : "bg-green-500"
-                              }"></span>`
-                            : ""
-                        }
-                    </div>
-                `;
+                          <div onclick="selectDate(${i})" class="${classes}" role="button" aria-pressed="${isSelected}">
+                              <span class="text-lg leading-none">${i}</span>
+                              ${
+                                apptCount > 0
+                                  ? `<span class="text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
+                                      isSelected ? "bg-white" : "bg-green-500"
+                                    }"></span>`
+                                  : ""
+                              }
+                          </div>
+                      `;
           dayCounter++;
         }
 
@@ -1290,20 +1294,20 @@
         });
 
         let listHTML = `
-              <h2 class="text-2xl font-bold text-gray-800 mb-6">Upcoming Appointments</h2>
-              <div class="space-y-4 appointment-list-container max-h-[80vh] overflow-y-auto">
-          `;
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Upcoming Appointments</h2>
+                    <div class="space-y-4 appointment-list-container max-h-[80vh] overflow-y-auto">
+                `;
 
         if (upcomingAppts.length === 0) {
           listHTML += `
-              <div class="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  <i class="fas fa-calendar-alt text-4xl text-gray-300"></i>
-                  <p class="mt-3 text-gray-600">No appointments scheduled for the future.</p>
-                  <button onclick="changeView('add')" class="mt-4 text-indigo-600 font-medium hover:text-indigo-700">
-                      Book a new appointment <i class="fas fa-arrow-right ml-1"></i>
-                  </button>
-              </div>
-          `;
+                    <div class="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        <i class="fas fa-calendar-alt text-4xl text-gray-300"></i>
+                        <p class="mt-3 text-gray-600">No appointments scheduled for the future.</p>
+                        <button onclick="changeView('add')" class="mt-4 text-indigo-600 font-medium hover:text-indigo-700">
+                            Book a new appointment <i class="fas fa-arrow-right ml-1"></i>
+                        </button>
+                    </div>
+                `;
         } else {
           upcomingAppts.forEach((appt) => {
             const dateDisplay = new Date(
@@ -1316,28 +1320,28 @@
             });
 
             listHTML += `
-                  <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
-                      <div class="flex-grow">
-                          <p class="text-xs font-semibold uppercase text-indigo-500">${
-                            appt.service || "Service N/A"
-                          }</p>
-                          <h4 class="text-lg font-bold text-gray-900">${
-                            appt.clientName
-                          }</h4>
-                          <div class="text-sm text-gray-600 mt-1 space-y-0.5">
-                              <p><i class="fas fa-calendar-day w-4 text-center text-indigo-400"></i> <span class="ml-1 font-medium">${dateDisplay}</span></p>
-                              <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${
-                                appt.time
-                              } (${appt.duration || 30} min)</span></p>
-                          </div>
-                      </div>
-                      <button onclick="deleteAppointment('${
-                        appt.id
-                      }')" class="text-red-400 hover:text-red-600 transition p-2 ml-3 focus:outline-none" title="Delete Appointment">
-                          <i class="fas fa-trash-alt text-lg"></i>
-                      </button>
-                  </div>
-              `;
+                        <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
+                            <div class="flex-grow">
+                                <p class="text-xs font-semibold uppercase text-indigo-500">${
+                                  appt.service || "Service N/A"
+                                }</p>
+                                <h4 class="text-lg font-bold text-gray-900">${
+                                  appt.clientName
+                                }</h4>
+                                <div class="text-sm text-gray-600 mt-1 space-y-0.5">
+                                    <p><i class="fas fa-calendar-day w-4 text-center text-indigo-400"></i> <span class="ml-1 font-medium">${dateDisplay}</span></p>
+                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${
+                                      appt.time
+                                    } (${appt.duration || 30} min)</span></p>
+                                </div>
+                            </div>
+                            <button onclick="deleteAppointment('${
+                              appt.id
+                            }')" class="text-red-400 hover:text-red-600 transition p-2 ml-3 focus:outline-none" title="Delete Appointment">
+                                <i class="fas fa-trash-alt text-lg"></i>
+                            </button>
+                        </div>
+                    `;
           });
         }
 
@@ -1363,65 +1367,65 @@
           .map(
             (service) =>
               `<label class="flex items-center space-x-2 p-3 border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition">
-                  <input type="checkbox" name="serviceId" value="${service.id}" data-duration="${service.duration}" 
-                         class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" 
-                         onchange="updateAppointmentDuration()">
-                  <span class="text-gray-800">${service.name}</span>
-                  <span class="text-sm text-gray-500 ml-auto">${service.duration} min</span>
-              </label>`
+                        <input type="checkbox" name="serviceId" value="${service.id}" data-duration="${service.duration}"
+                               class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                               onchange="updateAppointmentDuration()">
+                        <span class="text-gray-800">${service.name}</span>
+                        <span class="text-sm text-gray-500 ml-auto">${service.duration} min</span>
+                    </label>`
           )
           .join("");
 
         container.innerHTML = `
-                <div class="p-4 bg-white rounded-xl shadow-2xl border border-gray-100">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Book New Appointment</h2>
-                    <form onsubmit="saveAppointment(event)" id="appointment-form" class="space-y-4">
-                        
-                        <div>
-                            <label for="clientName" class="block text-sm font-medium text-gray-700 mb-1">Client Name <span class="text-red-500">*</span></label>
-                            <input type="text" id="clientName" name="clientName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Jane Doe">
-                        </div>
+                      <div class="p-4 bg-white rounded-xl shadow-2xl border border-gray-100">
+                          <h2 class="text-2xl font-bold text-gray-800 mb-6">Book New Appointment</h2>
+                          <form onsubmit="saveAppointment(event)" id="appointment-form" class="space-y-4">
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Select Services (Multiple allowed) <span class="text-red-500">*</span></label>
-                            <div id="service-options-container" class="border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white shadow-sm divide-y">
-                                ${
-                                  window.state.services.length === 0
-                                    ? '<p class="p-4 text-gray-500 text-center">No services defined. Please use the **Services** tab to add them first!</p>'
-                                    : serviceOptions
-                                }
-                            </div>
-                        </div>
+                              <div>
+                                  <label for="clientName" class="block text-sm font-medium text-gray-700 mb-1">Client Name <span class="text-red-500">*</span></label>
+                                  <input type="text" id="clientName" name="clientName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Jane Doe">
+                              </div>
 
-                        <div class="flex space-x-3">
-                            <div class="w-1/2">
-                                <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
-                                <input type="date" id="date" name="date" required value="${defaultDate}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
-                            </div>
-                            <div class="w-1/2">
-                                <label for="time" class="block text-sm font-medium text-gray-700 mb-1">Time <span class="text-red-500">*</span></label>
-                                <input type="time" id="time" name="time" required value="${defaultTime}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
-                            </div>
-                        </div>
+                              <div>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Select Services (Multiple allowed) <span class="text-red-500">*</span></label>
+                                  <div id="service-options-container" class="border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white shadow-sm divide-y">
+                                      ${
+                                        window.state.services.length === 0
+                                          ? '<p class="p-4 text-gray-500 text-center">No services defined. Please use the **Services** tab to add them first!</p>'
+                                          : serviceOptions
+                                      }
+                                  </div>
+                              </div>
 
-                        <div>
-                            <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes)</label>
-                            <input type="number" id="duration" name="duration" min="5" value="30" readonly 
-                                   class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm">
-                            <p class="text-xs text-gray-500 mt-1">Duration sums up based on the selected services.</p>
-                        </div>
-                        
-                        <div>
-                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                            <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
-                        </div>
+                              <div class="flex space-x-3">
+                                  <div class="w-1/2">
+                                      <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date <span class="text-red-500">*</span></label>
+                                      <input type="date" id="date" name="date" required value="${defaultDate}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                  </div>
+                                  <div class="w-1/2">
+                                      <label for="time" class="block text-sm font-medium text-gray-700 mb-1">Time <span class="text-red-500">*</span></label>
+                                      <input type="time" id="time" name="time" required value="${defaultTime}" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                  </div>
+                              </div>
 
-                        <button type="submit" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
-                            <i class="fas fa-calendar-plus mr-2"></i> Save Appointment
-                        </button>
-                    </form>
-                </div>
-            `;
+                              <div>
+                                  <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes)</label>
+                                  <input type="number" id="duration" name="duration" min="5" value="30" readonly
+                                         class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm">
+                                  <p class="text-xs text-gray-500 mt-1">Duration sums up based on the selected services.</p>
+                              </div>
+
+                              <div>
+                                  <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                  <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
+                              </div>
+
+                              <button type="submit" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
+                                  <i class="fas fa-calendar-plus mr-2"></i> Save Appointment
+                              </button>
+                          </form>
+                      </div>
+                  `;
         const form = document.getElementById("appointment-form");
         if (form) {
           document.getElementById("clientName").focus();
@@ -1444,66 +1448,70 @@
         const servicesList = window.state.services
           .map(
             (service) => `
-                <div class="bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-between items-center mb-3">
-                    <div>
-                        <p class="text-lg font-semibold text-gray-800">${service.name}</p>
-                        <p class="text-sm text-gray-500"><i class="fas fa-stopwatch text-indigo-400 mr-1"></i> ${service.duration} minutes</p>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button onclick="editService('${service.id}', '${service.name}', ${service.duration})" class="p-2 text-indigo-500 hover:text-indigo-700 transition" title="Edit Service">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button onclick="deleteService('${service.id}', '${service.name}')" class="p-2 text-red-500 hover:text-red-700 transition" title="Delete Service">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                </div>
-            `
+                      <div class="bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-between items-center mb-3">
+                          <div>
+                              <p class="text-lg font-semibold text-gray-800">${service.name}</p>
+                              <p class="text-sm text-gray-500"><i class="fas fa-stopwatch text-indigo-400 mr-1"></i> ${service.duration} minutes</p>
+                          </div>
+                          <div class="flex space-x-2">
+                              <button onclick="editService('${service.id}', '${service.name}', ${service.duration})" class="p-2 text-indigo-500 hover:text-indigo-700 transition" title="Edit Service">
+                                  <i class="fas fa-edit"></i>
+                              </button>
+                              <button onclick="deleteService('${service.id}', '${service.name}')" class="p-2 text-red-500 hover:text-red-700 transition" title="Delete Service">
+                                  <i class="fas fa-trash-alt"></i>
+                              </button>
+                          </div>
+                      </div>
+                  `
           )
           .join("");
 
         container.innerHTML = `
-                <div class="p-4">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6" id="service-form-title">${
-                      isEditing ? "Edit Service" : "Add New Service"
-                    }</h2>
-                    
-                    <form onsubmit="saveService(event)" id="service-form" class="space-y-4 bg-white p-5 rounded-xl shadow-lg mb-6 border border-indigo-100" ${
-                      isEditing ? `data-editing-id="${isEditing}"` : ""
-                    }>
-                        
-                        <div>
-                            <label for="serviceName" class="block text-sm font-medium text-gray-700 mb-1">Service Name <span class="text-red-500">*</span></label>
-                            <input type="text" id="serviceName" name="serviceName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Gel Manicure">
-                        </div>
+                      <div class="p-4">
+                          <h2 class="text-2xl font-bold text-gray-800 mb-6" id="service-form-title">${
+                            isEditing ? "Edit Service" : "Add New Service"
+                          }</h2>
 
-                        <div>
-                            <label for="serviceDuration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
-                            <input type="number" id="serviceDuration" name="serviceDuration" required min="5" value="30" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
-                        </div>
-                        
-                        <button type="submit" id="service-submit-btn" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
-                            ${isEditing ? "Update Service" : "Save Service"}
-                        </button>
-                        <button type="button" onclick="cancelEditService()" id="service-cancel-edit" class="w-full py-2 mt-2 text-indigo-600 border border-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition ${
-                          isEditing ? "" : "hidden"
-                        }">
-                            Cancel Edit
-                        </button>
-                    </form>
+                          <form onsubmit="saveService(event)" id="service-form" class="space-y-4 bg-white p-5 rounded-xl shadow-lg mb-6 border border-indigo-100" ${
+                            isEditing ? `data-editing-id="${isEditing}"` : ""
+                          }>
 
-                    <h3 class="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Defined Services (${
-                      window.state.services.length
-                    })</h3>
-                    <div class="service-list-container max-h-[40vh] overflow-y-auto pr-2">
-                        ${
-                          window.state.services.length === 0
-                            ? '<p class="text-gray-500 text-center py-5">No services defined yet. Use the form above to get started!</p>'
-                            : servicesList
-                        }
-                    </div>
-                </div>
-            `;
+                              <div>
+                                  <label for="serviceName" class="block text-sm font-medium text-gray-700 mb-1">Service Name <span class="text-red-500">*</span></label>
+                                  <input type="text" id="serviceName" name="serviceName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Gel Manicure">
+                              </div>
+
+                              <div>
+                                  <label for="serviceDuration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
+                                  <input type="number" id="serviceDuration" name="serviceDuration" required min="5" value="30" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                              </div>
+
+                              <button type="submit" id="service-submit-btn" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                                  ${
+                                    isEditing
+                                      ? "Update Service"
+                                      : "Save Service"
+                                  }
+                              </button>
+                              <button type="button" onclick="cancelEditService()" id="service-cancel-edit" class="w-full py-2 mt-2 text-indigo-600 border border-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition ${
+                                isEditing ? "" : "hidden"
+                              }">
+                                  Cancel Edit
+                              </button>
+                          </form>
+
+                          <h3 class="text-xl font-bold text-gray-800 mb-3 border-b pb-2">Defined Services (${
+                            window.state.services.length
+                          })</h3>
+                          <div class="service-list-container max-h-[40vh] overflow-y-auto pr-2">
+                              ${
+                                window.state.services.length === 0
+                                  ? '<p class="text-gray-500 text-center py-5">No services defined yet. Use the form above to get started!</p>'
+                                  : servicesList
+                              }
+                          </div>
+                      </div>
+                  `;
         // Manually restore form values after re-rendering if necessary, and ensure correct buttons/titles are shown
         const form = document.getElementById("service-form");
         if (isEditing && window.state.services.length > 0) {
