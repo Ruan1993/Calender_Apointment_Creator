@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gemini Nail Scheduler</title>
+    <title>Appointment Maker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
@@ -399,6 +399,33 @@
       }
       window.showConfirmModal = showConfirmModal;
 
+      async function pickContact() {
+        try {
+          if (navigator.contacts && navigator.contacts.select) {
+            const contacts = await navigator.contacts.select(["name", "tel"], { multiple: false });
+            if (contacts && contacts.length) {
+              const c = contacts[0];
+              const name = Array.isArray(c.name) ? c.name[0] : c.name;
+              let tel = "";
+              if (c.tel && c.tel.length) {
+                const t = c.tel[0];
+                tel = typeof t === "string" ? t : (t.value || t);
+              }
+              const form = document.getElementById("appointment-form");
+              if (form) {
+                if (name) form.clientName.value = name;
+                if (tel) form.phone.value = tel;
+              }
+            }
+          } else {
+            displayMessage("Contact Picker not supported on this device/browser.", "error", 4000);
+          }
+        } catch (e) {
+          displayMessage("Unable to access contacts: " + e.message, "error", 4000);
+        }
+      }
+      window.pickContact = pickContact;
+
       function showLoading(show) {
         document.getElementById("loading").classList.toggle("hidden", !show);
         document
@@ -590,6 +617,7 @@
           date: form.date.value,
           time: form.time.value,
           duration: totalDuration, // New: Sum of all selected services
+          phone: form.phone ? form.phone.value.trim() : "",
           notes: form.notes.value.trim(),
           timestamp: window.serverTimestamp(),
         };
@@ -1236,7 +1264,7 @@
           const apptCount = (appointmentsByDay[dayKey] || []).length;
 
           let classes =
-            "p-1 h-12 flex flex-col items-center justify-center rounded-xl font-medium cursor-pointer transition transform";
+            "p-1 h-24 flex flex-col items-stretch justify-start rounded-xl font-medium cursor-pointer transition transform gap-0.5";
 
           if (isSelected) {
             classes +=
@@ -1247,16 +1275,26 @@
             classes += " text-gray-800 hover:bg-gray-100";
           }
 
+          const dayAppts = appointmentsByDay[dayKey] || [];
+          const namesList = dayAppts
+            .slice(0, 3)
+            .map(
+              (a) => `<div class="text-[10px] leading-tight text-center ${
+                isSelected ? "text-white" : "text-gray-700"
+              }">${a.clientName}</div>`
+            )
+            .join("");
+          const moreCount = dayAppts.length > 3 ? dayAppts.length - 3 : 0;
+          const moreLine =
+            moreCount > 0
+              ? `<div class="text-[10px] leading-tight text-center ${
+                  isSelected ? "text-white" : "text-gray-500"
+                }">+${moreCount} more</div>`
+              : "";
           calendarHTML += `
                           <div onclick="selectDate(${i})" class="${classes}" role="button" aria-pressed="${isSelected}">
-                              <span class="text-lg leading-none">${i}</span>
-                              ${
-                                apptCount > 0
-                                  ? `<span class="text-xs leading-none mt-0.5 w-1.5 h-1.5 rounded-full mx-auto ${
-                                      isSelected ? "bg-white" : "bg-green-500"
-                                    }"></span>`
-                                  : ""
-                              }
+                              <span class="text-lg leading-none text-center">${i}</span>
+                              ${namesList}${moreLine}
                           </div>
                       `;
           dayCounter++;
@@ -1392,6 +1430,14 @@
                               <div>
                                   <label for="clientName" class="block text-sm font-medium text-gray-700 mb-1">Client Name <span class="text-red-500">*</span></label>
                                   <input type="text" id="clientName" name="clientName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., Jane Doe">
+                              </div>
+
+                              <div class="flex items-end space-x-2">
+                                  <div class="flex-1">
+                                      <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                      <input type="tel" id="phone" name="phone" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="e.g., +27 82 123 4567">
+                                  </div>
+                                  <button type="button" onclick="pickContact()" class="px-3 py-2 bg-gray-100 text-gray-800 rounded-lg border border-gray-300 hover:bg-gray-200 transition whitespace-nowrap"><i class="fas fa-address-book mr-1"></i> Pick contact</button>
                               </div>
 
                               <div>
