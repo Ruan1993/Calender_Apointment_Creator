@@ -67,7 +67,7 @@
   <body>
     <div id="app" class="flex flex-col bg-white">
       <header class="p-4 bg-indigo-600 text-white shadow-md flex-shrink-0">
-        <h1 class="text-xl font-bold">Nail Appointment Pro</h1>
+        <h1 class="text-xl font-bold">Appointment Pro</h1>
         <p class="text-sm opacity-80 mt-1">
           Service Management & Unlimited Booking
         </p>
@@ -78,7 +78,7 @@
         ></p>
       </header>
 
-      <main class="flex-grow overflow-y-auto p-3" id="main-content">
+      <main class="flex-grow overflow-y-auto p-3 pb-20" id="main-content">
         <div
           id="loading"
           class="flex flex-col items-center justify-center h-full text-indigo-500"
@@ -173,7 +173,8 @@
       </div>
 
       <nav
-        class="flex-shrink-0 bg-white border-t border-gray-200 shadow-2xl z-20"
+        class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-2xl z-20"
+        style="max-width: 480px; margin: 0 auto"
       >
         <div class="flex justify-around items-center h-16">
           <button
@@ -294,6 +295,8 @@
         services: [],
         currentView: "calendar",
         isAuthReady: false,
+        editingAppointmentId: null,
+        upcomingMode: "list",
       };
 
       /** Utility Functions **/
@@ -344,6 +347,184 @@
         box.classList.remove("hidden");
         setTimeout(() => box.classList.add("hidden"), duration);
       }
+
+      function parseDurationToMinutes(input) {
+        const s = String(input || "").trim().toLowerCase();
+        if (!s) return NaN;
+        let total = 0;
+        const hm = s.match(/^(\d+)\s*:\s*(\d{1,2})$/);
+        if (hm) {
+          total += parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10);
+          return total;
+        }
+        const hrs = s.match(/(\d+(?:\.\d+)?)\s*h/);
+        const mins = s.match(/(\d+(?:\.\d+)?)\s*m(?:in(?:utes)?)?/);
+        if (hrs) total += Math.round(parseFloat(hrs[1]) * 60);
+        if (mins) total += Math.round(parseFloat(mins[1]));
+        if (!hrs && !mins) {
+          const num = parseFloat(s);
+          if (!isNaN(num)) total += Math.round(num);
+        }
+        return total;
+      }
+
+      const SERVICE_COLORS = {
+        indigo: {
+          bg: "bg-indigo-50",
+          border: "border-indigo-100",
+          text: "text-indigo-600",
+          badgeBg: "bg-indigo-100",
+          badgeText: "text-indigo-700",
+          dot: "bg-indigo-500",
+        },
+        rose: {
+          bg: "bg-rose-50",
+          border: "border-rose-100",
+          text: "text-rose-600",
+          badgeBg: "bg-rose-100",
+          badgeText: "text-rose-700",
+          dot: "bg-rose-500",
+        },
+        emerald: {
+          bg: "bg-emerald-50",
+          border: "border-emerald-100",
+          text: "text-emerald-600",
+          badgeBg: "bg-emerald-100",
+          badgeText: "text-emerald-700",
+          dot: "bg-emerald-500",
+        },
+        amber: {
+          bg: "bg-amber-50",
+          border: "border-amber-100",
+          text: "text-amber-600",
+          badgeBg: "bg-amber-100",
+          badgeText: "text-amber-700",
+          dot: "bg-amber-500",
+        },
+        sky: {
+          bg: "bg-sky-50",
+          border: "border-sky-100",
+          text: "text-sky-600",
+          badgeBg: "bg-sky-100",
+          badgeText: "text-sky-700",
+          dot: "bg-sky-500",
+        },
+        violet: {
+          bg: "bg-violet-50",
+          border: "border-violet-100",
+          text: "text-violet-600",
+          badgeBg: "bg-violet-100",
+          badgeText: "text-violet-700",
+          dot: "bg-violet-500",
+        },
+        cyan: {
+          bg: "bg-cyan-50",
+          border: "border-cyan-100",
+          text: "text-cyan-600",
+          badgeBg: "bg-cyan-100",
+          badgeText: "text-cyan-700",
+          dot: "bg-cyan-500",
+        },
+        pink: {
+          bg: "bg-pink-50",
+          border: "border-pink-100",
+          text: "text-pink-600",
+          badgeBg: "bg-pink-100",
+          badgeText: "text-pink-700",
+          dot: "bg-pink-500",
+        },
+      };
+
+      function formatHM(totalMinutes) {
+        const m = Math.max(0, Number(totalMinutes) || 0);
+        const h = Math.floor(m / 60);
+        const mm = m % 60;
+        if (h > 0 && mm > 0) return `${h}h ${mm}m`;
+        if (h > 0) return `${h}h`;
+        return `${mm}m`;
+      }
+
+      function timeToMinutes(t) {
+        const [H, M] = String(t || "00:00").split(":").map((x) => parseInt(x, 10));
+        return (isNaN(H) ? 0 : H) * 60 + (isNaN(M) ? 0 : M);
+      }
+
+      function minutesToTime(mins) {
+        const m = Math.max(0, Math.round(mins));
+        const H = String(Math.floor(m / 60)).padStart(2, "0");
+        const M = String(m % 60).padStart(2, "0");
+        return `${H}:${M}`;
+      }
+
+      function renderHourlySchedule(dayKey, title) {
+        const appts = window.state.appointments.filter((a) => a.date === dayKey);
+        const rows = [];
+        const startHour = 6;
+        const endHour = 21;
+        for (let h = startHour; h <= endHour; h++) {
+          const slotStart = h * 60;
+          const slotEnd = (h + 1) * 60;
+          const inHour = appts
+            .map((a) => {
+              const s = timeToMinutes(a.time || "00:00");
+              const e = s + (Number(a.duration) || 0);
+              if (e <= slotStart || s >= slotEnd) return null;
+              const from = Math.max(slotStart, s);
+              const to = Math.min(slotEnd, e);
+              return {
+                clientName: a.clientName,
+                start: minutesToTime(from),
+                end: minutesToTime(to),
+                phone: a.phone || "",
+                id: a.id,
+              };
+            })
+            .filter(Boolean);
+          const items =
+            inHour.length === 0
+              ? '<span class="text-gray-400">—</span>'
+              : inHour
+                  .map(
+                    (x) =>
+                      `<div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded px-2 py-1 mt-1">
+                          <span class="text-xs font-medium text-gray-800 truncate" title="${x.clientName} ${x.start}-${x.end}">${x.clientName} (${x.start}-${x.end})</span>
+                          <button onclick="editAppointment('${x.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs"><i class="fas fa-edit"></i></button>
+                        </div>`
+                  )
+                  .join("");
+          rows.push(
+            `<div class="grid grid-cols-[64px_1fr] gap-2 items-start">
+                <div class="text-xs text-gray-500 font-semibold">${String(h).padStart(2, "0")}:00</div>
+                <div>${items}</div>
+             </div>`
+          );
+        }
+        return `
+          <div class="bg-white rounded-xl shadow border border-gray-100 p-3 mb-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-2">${title}</h3>
+            <div class="space-y-1">${rows.join("")}</div>
+          </div>
+        `;
+      }
+
+      function editAppointment(id) {
+        window.state.editingAppointmentId = id;
+        changeView("add");
+      }
+      window.editAppointment = editAppointment;
+
+      function cancelEditAppointment() {
+        if (window.state) window.state.editingAppointmentId = null;
+        const form = document.getElementById("appointment-form");
+        if (form) delete form.dataset.editingId;
+        const titleEl = document.getElementById("appointment-form-title");
+        const submitEl = document.getElementById("appointment-submit-btn");
+        const cancelEl = document.getElementById("appointment-cancel-edit");
+        if (titleEl) titleEl.textContent = "Book New Appointment";
+        if (submitEl) submitEl.innerHTML = '<i class="fas fa-calendar-plus mr-2"></i> Save Appointment';
+        if (cancelEl) cancelEl.classList.add("hidden");
+      }
+      window.cancelEditAppointment = cancelEditAppointment;
 
       /**
        * Custom Confirmation Modal (Replaces alert/confirm)
@@ -605,6 +786,7 @@
               id: service.id,
               name: service.name,
               duration: service.duration,
+              color: service.color || "indigo",
             });
             serviceNames.push(service.name);
           }
@@ -635,13 +817,22 @@
             return;
           }
 
-          await window.setDoc(window.doc(appointmentsRef), newAppointment);
+          const editingId = form.dataset.editingId || window.state.editingAppointmentId || null;
+          if (editingId) {
+            const docRef = window.doc(appointmentsRef, editingId);
+            await window.updateDoc(docRef, newAppointment);
+            displayMessage(`Appointment updated for ${newAppointment.clientName}.`);
+            window.state.editingAppointmentId = null;
+            delete form.dataset.editingId;
+          } else {
+            await window.setDoc(window.doc(appointmentsRef), newAppointment);
+            displayMessage(
+              `Appointment for ${newAppointment.clientName} (${newAppointment.service}) saved successfully!`
+            );
+          }
 
           // Reset form and switch view
           form.reset();
-          displayMessage(
-            `Appointment for ${newAppointment.clientName} (${newAppointment.service}) saved successfully!`
-          );
           changeView("upcoming");
         } catch (error) {
           console.error("Error saving appointment:", error);
@@ -733,10 +924,13 @@
         if (!servicesRef) return;
 
         const serviceName = form.serviceName.value.trim();
-        const serviceDuration = parseInt(form.serviceDuration.value);
+        const hours = parseInt(form.serviceHours.value || "0", 10);
+        const minutes = parseInt(form.serviceMinutes.value || "0", 10);
+        const serviceDuration = Math.max(0, (isNaN(hours) ? 0 : hours) * 60 + (isNaN(minutes) ? 0 : minutes));
+        const serviceColor = (form.serviceColor && form.serviceColor.value) || "indigo";
         const serviceId = form.dataset.editingId;
 
-        if (!serviceName || serviceDuration <= 0) {
+        if (!serviceName || !Number.isFinite(serviceDuration) || serviceDuration < 5) {
           displayMessage(
             "Please provide a valid name and duration (min 5 minutes).",
             "error"
@@ -747,6 +941,7 @@
         const serviceData = {
           name: serviceName,
           duration: serviceDuration,
+          color: serviceColor,
           timestamp: window.serverTimestamp(),
         };
 
@@ -806,10 +1001,15 @@
       }
       window.deleteService = deleteService;
 
-      function editService(id, name, duration) {
+      function editService(id, name, duration, color) {
         const form = document.getElementById("service-form");
         form.serviceName.value = name;
-        form.serviceDuration.value = duration;
+        const d = Number(duration) || 0;
+        const h = Math.floor(d / 60);
+        const m = d % 60;
+        if (form.serviceHours) form.serviceHours.value = String(h);
+        if (form.serviceMinutes) form.serviceMinutes.value = String(m);
+        if (form.serviceColor) form.serviceColor.value = color || "indigo";
         form.dataset.editingId = id;
         document.getElementById("service-form-title").textContent =
           "Edit Service";
@@ -846,6 +1046,7 @@
           'input[name="serviceId"]'
         );
         const durationInput = document.getElementById("duration");
+        const durationHmEl = document.getElementById("duration-hm");
         let totalDuration = 0;
 
         serviceCheckboxes.forEach((checkbox) => {
@@ -861,6 +1062,7 @@
         });
 
         durationInput.value = totalDuration > 0 ? totalDuration : 30; // Min 30 min default if none selected
+        if (durationHmEl) durationHmEl.textContent = formatHM(durationInput.value);
       }
       window.updateAppointmentDuration = updateAppointmentDuration;
 
@@ -1077,19 +1279,27 @@
                   </div>
               `;
 
-        container.innerHTML = modeSelectorHTML;
-
-        switch (mode) {
-          case "day":
-            container.innerHTML += renderDayView();
-            break;
-          case "week":
-            container.innerHTML += renderWeekView();
-            break;
-          case "month":
-          default:
-            container.innerHTML += renderMonthView();
-            break;
+        try {
+          container.innerHTML = modeSelectorHTML;
+          let content = "";
+          switch (mode) {
+            case "day":
+              content = renderDayView();
+              break;
+            case "week":
+              content = renderWeekView();
+              break;
+            case "month":
+            default:
+              content = renderMonthView();
+              break;
+          }
+          container.innerHTML += content || "";
+        } catch (e) {
+          console.error("Render calendar error", e);
+          container.innerHTML =
+            modeSelectorHTML +
+            `<div class="p-4 text-center text-red-600">Unable to render calendar view.</div>`;
         }
       }
 
@@ -1112,10 +1322,8 @@
                     </div>
                 `;
 
-        return (
-          navHTML +
-          generateDayAppointmentListHTML(dayKey, "Appointments", false)
-        );
+        const hourlyHTML = renderHourlySchedule(dayKey, "Schedule");
+        return navHTML + hourlyHTML + generateDayAppointmentListHTML(dayKey, "Appointments", false);
       }
 
       function renderWeekView() {
@@ -1276,13 +1484,20 @@
           }
 
           const dayAppts = appointmentsByDay[dayKey] || [];
+          const palette = [
+            "text-indigo-600",
+            "text-rose-600",
+            "text-emerald-600",
+            "text-amber-600",
+            "text-sky-600",
+          ];
           const namesList = dayAppts
             .slice(0, 3)
-            .map(
-              (a) => `<div class="text-[10px] leading-tight text-center ${
-                isSelected ? "text-white" : "text-gray-700"
-              }">${a.clientName}</div>`
-            )
+            .map((a, idx) => {
+              const color = isSelected ? "text-white" : palette[idx % palette.length];
+              const name = String(a.clientName || "").trim();
+              return `<div class="text-[10px] leading-tight text-center truncate w-full ${color}">${name}</div>`;
+            })
             .join("");
           const moreCount = dayAppts.length > 3 ? dayAppts.length - 3 : 0;
           const moreLine =
@@ -1332,6 +1547,22 @@
         const container = document.getElementById("upcoming-view");
         if (container.classList.contains("hidden")) return;
 
+        const mode = window.state.upcomingMode || "list";
+        const modeSelectorHTML = `
+                  <div class="flex justify-center space-x-2 mb-4 bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
+                      <button onclick="setUpcomingMode('list')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
+                        mode === "list"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-gray-700 hover:bg-white"
+                      }">List</button>
+                      <button onclick="setUpcomingMode('hourly')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${
+                        mode === "hourly"
+                          ? "bg-indigo-600 text-white shadow"
+                          : "text-gray-700 hover:bg-white"
+                      }">Hourly</button>
+                  </div>
+              `;
+
         const todayKey = formatDate(new Date());
 
         // Filter for appointments today or in the future
@@ -1339,7 +1570,7 @@
           return appt.date >= todayKey;
         });
 
-        let listHTML = `
+        let listHTML = modeSelectorHTML + `
                     <h2 class="text-2xl font-bold text-gray-800 mb-6">Upcoming Appointments</h2>
                     <div class="space-y-4 appointment-list-container max-h-[80vh] overflow-y-auto">
                 `;
@@ -1354,7 +1585,7 @@
                         </button>
                     </div>
                 `;
-        } else {
+        } else if (mode === "list") {
           upcomingAppts.forEach((appt) => {
             const dateDisplay = new Date(
               `${appt.date}T${appt.time || "00:00"}`
@@ -1365,36 +1596,72 @@
               year: "numeric",
             });
 
+            const phone = (appt.phone || "").trim();
+            const waNumber = phone.replace(/\D/g, "");
+            const waText = encodeURIComponent(`Hi ${appt.clientName}, your appointment is on ${dateDisplay} at ${appt.time || ""}.`);
+            const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : "";
+            const telLink = phone ? `tel:${phone}` : "";
+            const serviceBadgesHTML = Array.isArray(appt.serviceDetails) && appt.serviceDetails.length
+              ? appt.serviceDetails
+                  .map((s) => {
+                    const key = s.color || "indigo";
+                    const c = SERVICE_COLORS[key] || SERVICE_COLORS.indigo;
+                    return `<span class="inline-flex items-center text-xs font-medium px-2 py-1 rounded ${c.badgeBg} ${c.badgeText} mr-1 mb-1">${s.name}</span>`;
+                  })
+                  .join("")
+              : `<span class="text-xs font-semibold uppercase text-indigo-500">${appt.service || "Service N/A"}</span>`;
             listHTML += `
                         <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
                             <div class="flex-grow">
-                                <p class="text-xs font-semibold uppercase text-indigo-500">${
-                                  appt.service || "Service N/A"
-                                }</p>
-                                <h4 class="text-lg font-bold text-gray-900">${
-                                  appt.clientName
-                                }</h4>
+                                <div class="flex flex-wrap">${serviceBadgesHTML}</div>
+                                <h4 class="text-lg font-bold text-gray-900">${appt.clientName}</h4>
                                 <div class="text-sm text-gray-600 mt-1 space-y-0.5">
                                     <p><i class="fas fa-calendar-day w-4 text-center text-indigo-400"></i> <span class="ml-1 font-medium">${dateDisplay}</span></p>
-                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${
-                                      appt.time
-                                    } (${appt.duration || 30} min)</span></p>
+                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min • ${formatHM(appt.duration || 30)})</span></p>
+                                    ${phone ? `<p><i class="fas fa-phone w-4 text-center text-indigo-400"></i> <span class="ml-1">${phone}</span></p>` : ""}
                                 </div>
                             </div>
-                            <button onclick="deleteAppointment('${
-                              appt.id
-                            }')" class="text-red-400 hover:text-red-600 transition p-2 ml-3 focus:outline-none" title="Delete Appointment">
-                                <i class="fas fa-trash-alt text-lg"></i>
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <button onclick="editAppointment('${appt.id}')" class="p-2 text-indigo-500 hover:text-indigo-700 transition" title="Edit Appointment">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                ${waLink ? `<a href="${waLink}" target="_blank" class="p-2 text-green-600 hover:text-green-700 transition" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>` : ""}
+                                ${telLink ? `<a href="${telLink}" class="p-2 text-indigo-600 hover:text-indigo-700 transition" title="Call"><i class="fas fa-phone"></i></a>` : ""}
+                                <button onclick="deleteAppointment('${appt.id}')" class="text-red-400 hover:text-red-600 transition p-2 ml-1 focus:outline-none" title="Delete Appointment">
+                                    <i class="fas fa-trash-alt text-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     `;
           });
+          listHTML += `</div>`;
+        } else {
+          const selectedDate = window.state.selectedDate;
+          const dayKey = formatDate(selectedDate);
+          const selectedDateDisplay = selectedDate.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          const navHTML = `
+                    <div class="mb-2 flex justify-between items-center px-2">
+                        <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                        <h3 class="text-base font-semibold text-gray-800">${selectedDateDisplay}</h3>
+                        <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                `;
+          listHTML = modeSelectorHTML + navHTML + renderHourlySchedule(dayKey, "Hourly Plan");
         }
-
-        listHTML += `</div>`;
         container.innerHTML = listHTML;
       }
       window.renderUpcomingView = renderUpcomingView;
+
+      function setUpcomingMode(mode) {
+        window.state.upcomingMode = mode;
+        renderUpcomingView();
+      }
+      window.setUpcomingMode = setUpcomingMode;
 
       function renderAddAppointmentView() {
         const container = document.getElementById("add-appointment-view");
@@ -1411,20 +1678,24 @@
         // Generate service options (now checkboxes)
         const serviceOptions = window.state.services
           .map(
-            (service) =>
-              `<label class="flex items-center space-x-2 p-3 border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition">
+            (service) => {
+              const colorKey = service.color || "indigo";
+              const c = SERVICE_COLORS[colorKey] || SERVICE_COLORS.indigo;
+              return `<label class="flex items-center space-x-2 p-3 border-b border-gray-100 cursor-pointer hover:bg-indigo-50 transition">
                         <input type="checkbox" name="serviceId" value="${service.id}" data-duration="${service.duration}"
                                class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                onchange="updateAppointmentDuration()">
+                        <span class="inline-block w-3 h-3 rounded-full ${c.dot}"></span>
                         <span class="text-gray-800">${service.name}</span>
                         <span class="text-sm text-gray-500 ml-auto">${service.duration} min</span>
-                    </label>`
+                    </label>`;
+            }
           )
           .join("");
 
         container.innerHTML = `
                       <div class="p-4 bg-white rounded-xl shadow-2xl border border-gray-100">
-                          <h2 class="text-2xl font-bold text-gray-800 mb-6">Book New Appointment</h2>
+                          <h2 class="text-2xl font-bold text-gray-800 mb-6" id="appointment-form-title">Book New Appointment</h2>
                           <form onsubmit="saveAppointment(event)" id="appointment-form" class="space-y-4">
 
                               <div>
@@ -1445,7 +1716,7 @@
                                   <div id="service-options-container" class="border border-gray-300 rounded-lg max-h-48 overflow-y-auto bg-white shadow-sm divide-y">
                                       ${
                                         window.state.services.length === 0
-                                          ? '<p class="p-4 text-gray-500 text-center">No services defined. Please use the **Services** tab to add them first!</p>'
+                                  ? '<p class="p-4 text-gray-500 text-center">No services defined. Please use the Services tab to add them first!</p>'
                                           : serviceOptions
                                       }
                                   </div>
@@ -1463,10 +1734,11 @@
                               </div>
 
                               <div>
-                                  <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes)</label>
+                                  <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration</label>
                                   <input type="number" id="duration" name="duration" min="5" value="30" readonly
-                                         class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm">
-                                  <p class="text-xs text-gray-500 mt-1">Duration sums up based on the selected services.</p>
+                                         class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm" aria-describedby="duration-hm">
+                                  <p id="duration-hm" class="text-sm font-medium text-gray-700 mt-1">30m</p>
+                                  <p class="text-xs text-gray-500">Duration sums up based on the selected services.</p>
                               </div>
 
                               <div>
@@ -1474,8 +1746,11 @@
                                   <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
                               </div>
 
-                              <button type="submit" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
+                              <button type="submit" id="appointment-submit-btn" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
                                   <i class="fas fa-calendar-plus mr-2"></i> Save Appointment
+                              </button>
+                              <button type="button" onclick="cancelEditAppointment()" id="appointment-cancel-edit" class="w-full py-2 mt-2 text-indigo-600 border border-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition hidden">
+                                  Cancel Edit
                               </button>
                           </form>
                       </div>
@@ -1486,6 +1761,30 @@
         }
         // Initialize duration calculation
         updateAppointmentDuration();
+
+        if (window.state && window.state.editingAppointmentId) {
+          const appt = window.state.appointments.find(
+            (a) => a.id === window.state.editingAppointmentId
+          );
+          if (appt) {
+            form.dataset.editingId = appt.id;
+            document.getElementById("appointment-form-title").textContent = "Edit Appointment";
+            document.getElementById("appointment-submit-btn").innerHTML = '<i class="fas fa-save mr-2"></i> Update Appointment';
+            document.getElementById("appointment-cancel-edit").classList.remove("hidden");
+            form.clientName.value = appt.clientName || "";
+            form.phone.value = appt.phone || "";
+            form.date.value = appt.date || defaultDate;
+            form.time.value = appt.time || defaultTime;
+            form.notes.value = appt.notes || "";
+            if (Array.isArray(appt.serviceDetails)) {
+              const ids = new Set(appt.serviceDetails.map((s) => s.id));
+              form.querySelectorAll('input[name="serviceId"]').forEach((cb) => {
+                cb.checked = ids.has(cb.value);
+              });
+              updateAppointmentDuration();
+            }
+          }
+        }
       }
 
       function renderServiceManagementView() {
@@ -1501,14 +1800,17 @@
 
         const servicesList = window.state.services
           .map(
-            (service) => `
+            (service) => {
+              const colorKey = service.color || "indigo";
+              const c = SERVICE_COLORS[colorKey] || SERVICE_COLORS.indigo;
+              return `
                       <div class="bg-white p-4 rounded-xl shadow border border-gray-100 flex justify-between items-center mb-3">
                           <div>
-                              <p class="text-lg font-semibold text-gray-800">${service.name}</p>
+                              <p class="text-lg font-semibold text-gray-800 flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-full ${c.dot}"></span>${service.name}</p>
                               <p class="text-sm text-gray-500"><i class="fas fa-stopwatch text-indigo-400 mr-1"></i> ${service.duration} minutes</p>
                           </div>
                           <div class="flex space-x-2">
-                              <button onclick="editService('${service.id}', '${service.name}', ${service.duration})" class="p-2 text-indigo-500 hover:text-indigo-700 transition" title="Edit Service">
+                              <button onclick="editService('${service.id}', '${service.name}', ${service.duration}, '${colorKey}')" class="p-2 text-indigo-500 hover:text-indigo-700 transition" title="Edit Service">
                                   <i class="fas fa-edit"></i>
                               </button>
                               <button onclick="deleteService('${service.id}', '${service.name}')" class="p-2 text-red-500 hover:text-red-700 transition" title="Delete Service">
@@ -1516,7 +1818,8 @@
                               </button>
                           </div>
                       </div>
-                  `
+                  `;
+            }
           )
           .join("");
 
@@ -1536,8 +1839,33 @@
                               </div>
 
                               <div>
-                                  <label for="serviceDuration" class="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) <span class="text-red-500">*</span></label>
-                                  <input type="number" id="serviceDuration" name="serviceDuration" required min="5" value="30" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Duration <span class="text-red-500">*</span></label>
+                                  <div class="flex gap-2">
+                                      <div class="flex-1">
+                                          <select id="serviceHours" name="serviceHours" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                              ${Array.from({ length: 13 }, (_, i) => `<option value="${i}">${i} hours</option>`).join("")}
+                                          </select>
+                                      </div>
+                                      <div class="flex-1">
+                                          <select id="serviceMinutes" name="serviceMinutes" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                              ${[0,5,10,15,20,25,30,35,40,45,50,55].map((m) => `<option value="${m}">${m} minutes</option>`).join("")}
+                                          </select>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <label for="serviceColor" class="block text-sm font-medium text-gray-700 mb-1">Color <span class="text-red-500">*</span></label>
+                                  <select id="serviceColor" name="serviceColor" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                      <option value="indigo">Indigo</option>
+                                      <option value="rose">Rose</option>
+                                      <option value="emerald">Emerald</option>
+                                      <option value="amber">Amber</option>
+                                      <option value="sky">Sky</option>
+                                      <option value="violet">Violet</option>
+                                      <option value="cyan">Cyan</option>
+                                      <option value="pink">Pink</option>
+                                  </select>
                               </div>
 
                               <button type="submit" id="service-submit-btn" class="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
@@ -1574,8 +1902,17 @@
           );
           if (serviceToEdit) {
             form.serviceName.value = serviceToEdit.name;
-            form.serviceDuration.value = serviceToEdit.duration;
+            const d = Number(serviceToEdit.duration) || 0;
+            const h = Math.floor(d / 60);
+            const m = d % 60;
+            if (form.serviceHours) form.serviceHours.value = String(h);
+            if (form.serviceMinutes) form.serviceMinutes.value = String(m);
+            if (form.serviceColor) form.serviceColor.value = serviceToEdit.color || "indigo";
           }
+        } else {
+          if (form.serviceHours) form.serviceHours.value = "0";
+          if (form.serviceMinutes) form.serviceMinutes.value = "30";
+          if (form.serviceColor) form.serviceColor.value = "indigo";
         }
       }
       window.renderServiceManagementView = renderServiceManagementView;
@@ -1588,3 +1925,97 @@
     </script>
   </body>
 </html>
+      function editAppointment(id) {
+        window.state.editingAppointmentId = id;
+        changeView("add");
+      }
+      window.editAppointment = editAppointment;
+
+      function cancelEditAppointment() {
+        if (window.state) window.state.editingAppointmentId = null;
+        const form = document.getElementById("appointment-form");
+        if (form) delete form.dataset.editingId;
+        const titleEl = document.getElementById("appointment-form-title");
+        const submitEl = document.getElementById("appointment-submit-btn");
+        const cancelEl = document.getElementById("appointment-cancel-edit");
+        if (titleEl) titleEl.textContent = "Book New Appointment";
+        if (submitEl) submitEl.innerHTML = '<i class="fas fa-calendar-plus mr-2"></i> Save Appointment';
+        if (cancelEl) cancelEl.classList.add("hidden");
+      }
+      window.cancelEditAppointment = cancelEditAppointment;
+      function formatHM(totalMinutes) {
+        const m = Math.max(0, Number(totalMinutes) || 0);
+        const h = Math.floor(m / 60);
+        const mm = m % 60;
+        if (h > 0 && mm > 0) return `${h}h ${mm}m`;
+        if (h > 0) return `${h}h`;
+        return `${mm}m`;
+      }
+
+      function timeToMinutes(t) {
+        const [H, M] = String(t || "00:00").split(":").map((x) => parseInt(x, 10));
+        return (isNaN(H) ? 0 : H) * 60 + (isNaN(M) ? 0 : M);
+      }
+
+      function minutesToTime(mins) {
+        const m = Math.max(0, Math.round(mins));
+        const H = String(Math.floor(m / 60)).padStart(2, "0");
+        const M = String(m % 60).padStart(2, "0");
+        return `${H}:${M}`;
+      }
+      function renderHourlySchedule(dayKey, title) {
+        const appts = window.state.appointments.filter((a) => a.date === dayKey);
+        const rows = [];
+        const startHour = 6;
+        const endHour = 21;
+        for (let h = startHour; h <= endHour; h++) {
+          const slotStart = h * 60;
+          const slotEnd = (h + 1) * 60;
+          const inHour = appts
+            .map((a) => {
+              const s = timeToMinutes(a.time || "00:00");
+              const e = s + (Number(a.duration) || 0);
+              if (e <= slotStart || s >= slotEnd) return null;
+              const from = Math.max(slotStart, s);
+              const to = Math.min(slotEnd, e);
+              return {
+                clientName: a.clientName,
+                start: minutesToTime(from),
+                end: minutesToTime(to),
+                phone: a.phone || "",
+                id: a.id,
+                services: Array.isArray(a.serviceDetails) ? a.serviceDetails : [],
+              };
+            })
+            .filter(Boolean);
+          const items =
+            inHour.length === 0
+              ? "<span class=\"text-gray-400\">—</span>"
+              : inHour
+                  .map((x) => {
+                    const key = (x.services[0] && x.services[0].color) || "indigo";
+                    const c = SERVICE_COLORS[key] || SERVICE_COLORS.indigo;
+                    const serviceTags = x.services
+                      .map((s) => {
+                        const k = s.color || "indigo";
+                        const cc = SERVICE_COLORS[k] || SERVICE_COLORS.indigo;
+                        return `<span class=\"inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded ${cc.badgeBg} ${cc.badgeText} mr-1\">${s.name}</span>`;
+                      })
+                      .join("");
+                    return `<div class=\"flex items-center justify-between ${c.bg} border ${c.border} rounded px-2 py-1 mt-1\">\n                          <div class=\"flex-1\">\n                            <span class=\"text-xs font-medium text-gray-800 truncate\" title=\"${x.clientName} ${x.start}-${x.end}\">${x.clientName} (${x.start}-${x.end})</span>\n                            <div class=\"mt-0.5\">${serviceTags}</div>\n                          </div>\n                          <button onclick=\"editAppointment('${x.id}')\" class=\"${c.text} hover:opacity-80 text-xs\"><i class=\"fas fa-edit\"></i></button>\n                        </div>`;
+                  })
+                  .join("");
+          rows.push(
+            `<div class=\"grid grid-cols-[64px_1fr] gap-2 items-start\">
+                <div class=\"text-xs text-gray-500 font-semibold\">${String(h).padStart(2, "0")}:00</div>
+                <div>${items}</div>
+             </div>`
+          );
+        }
+        return `
+          <div class=\"bg-white rounded-xl shadow border border-gray-100 p-3 mb-4\">
+            <h3 class=\"text-lg font-semibold text-gray-800 mb-2\">${title}</h3>
+            <div class=\"space-y-1\">${rows.join("")}</div>
+          </div>
+        `;
+      }
