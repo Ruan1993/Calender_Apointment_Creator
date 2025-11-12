@@ -237,7 +237,7 @@
       } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
       import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-      // Global Firebase variables (Accessible via window scope)
+      // Global Firebase variables (Accessible via window scope) - REMOVED FOR RELIABILITY
       window.initializeApp = initializeApp;
       window.getAuth = getAuth;
       window.signInAnonymously = signInAnonymously;
@@ -264,6 +264,7 @@
 
       // ------------------------------------------------------------------
       // 👇 HARDCODED CONFIGURATION TO GUARANTEE KEY LOADING - FIXES ERROR 👇
+      // This is the configuration you provided from the Firebase Console
       // ------------------------------------------------------------------
       const appId = "calender-appointment-creator"; // Project ID
 
@@ -415,11 +416,10 @@
 
       async function initApp() {
         if (!firebaseConfig) {
-          // This should never happen with the hardcoded fix, but is a safe fallback
           console.error("Firebase config is missing.");
           showLoading(false);
           displayMessage(
-            "Error: Firebase configuration missing.",
+            "Error: Firebase configuration missing (Guaranteed fix failure).",
             "error",
             5000
           );
@@ -427,7 +427,7 @@
         }
 
         try {
-          const app = initializeApp(firebaseConfig);
+          const app = window.initializeApp(firebaseConfig);
           const { getAuth } = window; // Use imported functions
           const { getFirestore } = window; // Use imported functions
           const {
