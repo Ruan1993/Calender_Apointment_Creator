@@ -295,12 +295,16 @@ function renderHourlySchedule(dayKey, title) {
         if (e <= slotStart || s >= slotEnd) return null;
         const from = Math.max(slotStart, s);
         const to = Math.min(slotEnd, e);
+        const endTimeHM = minutesToTime(e);
+        const endMs = new Date(`${dayKey}T${endTimeHM}`).getTime();
+        const isCompleted = Date.now() >= endMs;
         return {
           clientName: a.clientName,
           start: minutesToTime(from),
           end: minutesToTime(to),
           phone: a.phone || "",
           id: a.id,
+          completed: isCompleted,
         };
       })
       .filter(Boolean);
@@ -311,7 +315,7 @@ function renderHourlySchedule(dayKey, title) {
             .map(
               (x) =>
                 `<div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded px-2 py-1 mt-1">
-                          <span class="text-xs font-medium text-gray-800 truncate" title="${x.clientName} ${x.start}-${x.end}">${x.clientName} (${x.start}-${x.end})</span>
+                          <span class="text-xs font-medium text-gray-800 truncate" title="${x.clientName} ${x.start}-${x.end}">${x.clientName} (${x.start}-${x.end}) ${x.completed ? '<span class="ml-1 text-red-600 font-semibold">Completed</span>' : ''}</span>
                           <button onclick="editAppointment('${x.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs"><i class="fas fa-edit"></i></button>
                         </div>`
             )
@@ -1051,6 +1055,16 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
   } else {
     appts.forEach((appt) => {
       const serviceDisplay = appt.service || "Service N/A";
+      const phone = (appt.phone || "").trim();
+      const waNumber = phone.replace(/\D/g, "");
+      const dateDisplay = new Date(`${dayKey}T${appt.time || "00:00"}`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      const waText = encodeURIComponent(`Hi ${appt.clientName}, your appointment was on ${dateDisplay} at ${appt.time || ""}.`);
+      const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : "";
+      const telLink = phone ? `tel:${phone}` : "";
+      const startMs = new Date(`${dayKey}T${appt.time || "00:00"}`).getTime();
+      const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
+      const isCompleted = Date.now() >= endMs;
+      const completedNoteHTML = isCompleted ? `<p class=\"text-xs font-semibold text-red-600 mt-1\"><i class=\"fas fa-circle-check w-3 text-center\"></i> Appointment Completed</p>` : "";
 
       listHTML += `
                               <div class="bg-white p-3 mb-2 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
@@ -1059,12 +1073,19 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
                                       <h4 class="text-base font-bold text-gray-900">${appt.clientName}</h4>
                                       <div class="text-xs text-gray-600 mt-1">
                                           <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min)</span></p>
+                                          ${phone ? `<p class=\"mt-1\"><i class=\"fas fa-phone w-3 text-center text-indigo-400\"></i> <span class=\"ml-1\">${phone}</span></p>` : ""}
                                           ${appt.notes && !isCompact ? `<p class="mt-1 text-xs italic text-gray-500"><i class="fas fa-sticky-note w-3 text-center"></i> ${appt.notes}</p>` : ""}
                                       </div>
                                   </div>
-                                  <button onclick="deleteAppointment('${appt.id}')" class="text-red-400 hover:text-red-600 transition p-1 ml-2 focus:outline-none" title="Delete Appointment">
-                                      <i class="fas fa-trash-alt text-base"></i>
-                                  </button>
+                                  <div class="flex flex-col items-end ml-2">
+                                      <div class="flex items-center gap-2">
+                                          <button onclick="editAppointment('${appt.id}')" class="p-1 text-indigo-500 hover:text-indigo-700 transition" title="Edit Appointment"><i class="fas fa-edit"></i></button>
+                                          ${waLink ? `<a href=\"${waLink}\" target=\"_blank\" class=\"p-1 text-green-600 hover:text-green-700 transition\" title=\"WhatsApp\"><i class=\"fab fa-whatsapp\"></i></a>` : ""}
+                                          ${telLink ? `<a href=\"${telLink}\" class=\"p-1 text-indigo-600 hover:text-indigo-700 transition\" title=\"Call\"><i class=\"fas fa-phone\"></i></a>` : ""}
+                                          <button onclick="deleteAppointment('${appt.id}')" class="text-red-400 hover:text-red-600 transition p-1 focus:outline-none" title="Delete Appointment"><i class="fas fa-trash-alt text-base"></i></button>
+                                      </div>
+                                      ${completedNoteHTML}
+                                  </div>
                               </div>
                           `;
     });
@@ -1290,11 +1311,13 @@ function renderUpcomingView() {
                   </div>
               `;
 
-  const todayKey = formatDate(new Date());
-
-  const upcomingAppts = window.state.appointments.filter((appt) => {
-    return appt.date >= todayKey;
-  });
+  const nowMs = Date.now();
+  const upcomingAppts = window.state.appointments
+    .filter((appt) => {
+      const startMs = new Date(`${appt.date}T${appt.time || "00:00"}`).getTime();
+      const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
+      return endMs >= nowMs;
+    });
 
   let listHTML = modeSelectorHTML + `
                     <h2 class="text-2xl font-bold text-gray-800 mb-6">Upcoming Appointments</h2>
@@ -1320,6 +1343,10 @@ function renderUpcomingView() {
       const waText = encodeURIComponent(`Hi ${appt.clientName}, your appointment is on ${dateDisplay} at ${appt.time || ""}.`);
       const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : "";
       const telLink = phone ? `tel:${phone}` : "";
+      const startMs = new Date(`${appt.date}T${appt.time || "00:00"}`).getTime();
+      const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
+      const isCompleted = Date.now() >= endMs;
+      const completedHTML = isCompleted ? `<p class="mt-1 text-xs font-semibold text-emerald-600"><i class="fas fa-check-circle w-4 text-center"></i> Appointment Completed</p>` : "";
       const serviceBadgesHTML = Array.isArray(appt.serviceDetails) && appt.serviceDetails.length
         ? appt.serviceDetails
             .map((s) => {
@@ -1337,6 +1364,7 @@ function renderUpcomingView() {
                                 <div class="text-sm text-gray-600 mt-1 space-y-0.5">
                                     <p><i class="fas fa-calendar-day w-4 text-center text-indigo-400"></i> <span class="ml-1 font-medium">${dateDisplay}</span></p>
                                     <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min • ${formatHM(appt.duration || 30)})</span></p>
+                                    ${completedHTML}
                                     ${phone ? `<p><i class="fas fa-phone w-4 text-center text-indigo-400"></i> <span class="ml-1">${phone}</span></p>` : ""}
                                 </div>
                             </div>
@@ -1614,3 +1642,8 @@ window.renderServiceManagementView = renderServiceManagementView;
 
 window.onload = initApp;
 changeView("calendar");
+setInterval(() => {
+  if (window.state && window.state.currentView === "upcoming") {
+    renderUpcomingView();
+  }
+}, 30000);
