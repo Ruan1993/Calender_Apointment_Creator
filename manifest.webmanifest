@@ -1,0 +1,23 @@
+{
+  "name": "Appointment Maker Pro",
+  "short_name": "Appointments",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='14' width='48' height='42' rx='8' fill='%234f46e5'/%3E%3Crect x='8' y='10' width='48' height='10' rx='6' fill='%236b66f0'/%3E%3Ccircle cx='20' cy='20' r='3' fill='white'/%3E%3Ccircle cx='44' cy='20' r='3' fill='white'/%3E%3Ctext x='32' y='40' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EAM%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='8' y='14' width='48' height='42' rx='8' fill='%234f46e5'/%3E%3Crect x='8' y='10' width='48' height='10' rx='6' fill='%236b66f0'/%3E%3Ccircle cx='20' cy='20' r='3' fill='white'/%3E%3Ccircle cx='44' cy='20' r='3' fill='white'/%3E%3Ctext x='32' y='40' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EAM%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

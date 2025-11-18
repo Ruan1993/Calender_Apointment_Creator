@@ -1304,6 +1304,8 @@ function renderUpcomingView() {
   if (container.classList.contains("hidden")) return;
 
   const mode = window.state.upcomingMode || "list";
+  const main = document.getElementById("main-content");
+  const prevScroll = main ? main.scrollTop : 0;
   const modeSelectorHTML = `
                   <div class="flex justify-center space-x-2 mb-4 bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
                       <button onclick="setUpcomingMode('list')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${mode === "list" ? "bg-indigo-600 text-white shadow" : "text-gray-700 hover:bg-white"}">List</button>
@@ -1362,7 +1364,7 @@ function renderUpcomingView() {
                                 <div class="flex flex-wrap">${serviceBadgesHTML}</div>
                                 <h4 class="text-lg font-bold text-gray-900">${appt.clientName}</h4>
                                 <div class="text-sm text-gray-600 mt-1 space-y-0.5">
-                                    <p><i class="fas fa-calendar-day w-4 text-center text-indigo-400"></i> <span class="ml-1 font-medium">${dateDisplay}</span></p>
+                                    <p><i class="fas fa-calendar-day w-4 text-center text-indigo-500"></i> <span class="ml-1 font-bold text-indigo-700">${dateDisplay}</span></p>
                                     <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min • ${formatHM(appt.duration || 30)})</span></p>
                                     ${completedHTML}
                                     ${phone ? `<p><i class="fas fa-phone w-4 text-center text-indigo-400"></i> <span class="ml-1">${phone}</span></p>` : ""}
@@ -1396,6 +1398,21 @@ function renderUpcomingView() {
     listHTML = modeSelectorHTML + navHTML + renderHourlySchedule(dayKey, "Hourly Plan");
   }
   container.innerHTML = listHTML;
+  if (main) {
+    main.scrollTop = prevScroll;
+    const btn = document.getElementById("back-to-top");
+    if (btn && !btn.__init) {
+      btn.__init = true;
+      btn.onclick = () => main.scrollTo({ top: 0, behavior: "smooth" });
+      main.addEventListener("scroll", () => {
+        const show = main.scrollTop > 200;
+        btn.classList.toggle("hidden", !show);
+      });
+    }
+    const show = main.scrollTop > 200;
+    const btn2 = document.getElementById("back-to-top");
+    if (btn2) btn2.classList.toggle("hidden", !show);
+  }
 }
 window.renderUpcomingView = renderUpcomingView;
 
@@ -1642,6 +1659,11 @@ window.renderServiceManagementView = renderServiceManagementView;
 
 window.onload = initApp;
 changeView("calendar");
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {
+    // ignore registration errors to avoid impacting app usage
+  });
+}
 setInterval(() => {
   if (window.state && window.state.currentView === "upcoming") {
     renderUpcomingView();
