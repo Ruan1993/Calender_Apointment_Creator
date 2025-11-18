@@ -1,9 +1,14 @@
-const CACHE_NAME = "appointment-app-v1";
+const CACHE_NAME = "appointment-app-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./app.js",
-  "./styles.css"
+  "./styles.css",
+  "./tailwind.css",
+  "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",
+  "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+  "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+  "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js",
 ];
 
 self.addEventListener("install", (event) => {
@@ -30,7 +35,7 @@ self.addEventListener("fetch", (event) => {
       const fromNetwork = fetch(req)
         .then((res) => {
           try {
-            if (res && res.status === 200 && res.type === "basic") {
+            if (res && res.status === 200 && (res.type === "basic" || res.type === "cors")) {
               const copy = res.clone();
               caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
             }
