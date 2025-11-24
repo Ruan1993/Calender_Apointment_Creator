@@ -498,17 +498,22 @@ async function secureMyAccount() {
   const email = prompt("Enter your email address:");
   const password = prompt("Create a password:");
   if (!user) {
-    alert("Error: No authenticated user.");
+    alert("Please wait for the app to finish loading your data first.");
     return;
   }
   if (email && password) {
     try {
       const credential = window.EmailAuthProvider.credential(email, password);
       await window.linkWithCredential(user, credential);
-      alert("Success! Your account is now safe. You can log in on any device.");
+      alert("Success! Your account is now linked. You can safely install the new app and log in with this email.");
+      console.log("Account successfully linked to:", email);
     } catch (error) {
       console.error(error);
-      alert("Error: " + (error && error.message ? error.message : String(error)));
+      if (error && error.code === "auth/credential-already-in-use") {
+        alert("Error: That email is already used by another account. Please use a different email.");
+      } else {
+        alert("Error linking account: " + (error && error.message ? error.message : String(error)));
+      }
     }
   }
 }
@@ -551,6 +556,8 @@ async function initApp() {
         window.state.isAuthReady = true;
         document.getElementById("user-id-display").textContent = `User ID: ${userId}`;
         console.log("Authenticated with UID:", userId);
+        const linkBtn = document.getElementById("link-account-btn");
+        if (linkBtn) linkBtn.disabled = false;
 
         listenForAppointments();
         listenForServices();
@@ -561,6 +568,8 @@ async function initApp() {
         userId = crypto.randomUUID();
         window.state.isAuthReady = true;
         document.getElementById("user-id-display").textContent = `User ID: ${userId} (Anon)`;
+        const linkBtn = document.getElementById("link-account-btn");
+        if (linkBtn) linkBtn.disabled = false;
         listenForAppointments();
         listenForServices();
         listenForContacts();
