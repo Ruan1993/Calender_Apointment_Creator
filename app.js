@@ -6,6 +6,8 @@ import {
   onAuthStateChanged,
   setPersistence,
   browserLocalPersistence,
+  linkWithCredential,
+  EmailAuthProvider,
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
   getFirestore,
@@ -29,6 +31,8 @@ window.signInWithCustomToken = signInWithCustomToken;
 window.onAuthStateChanged = onAuthStateChanged;
 window.setPersistence = setPersistence;
 window.browserLocalPersistence = browserLocalPersistence;
+window.linkWithCredential = linkWithCredential;
+window.EmailAuthProvider = EmailAuthProvider;
 window.getFirestore = getFirestore;
 window.doc = doc;
 window.setDoc = setDoc;
@@ -488,6 +492,27 @@ function showLoading(show) {
   document.getElementById("add-appointment-view").classList.toggle("hidden", show);
   document.getElementById("service-management-view").classList.toggle("hidden", show);
 }
+
+async function secureMyAccount() {
+  const user = auth && auth.currentUser;
+  const email = prompt("Enter your email address:");
+  const password = prompt("Create a password:");
+  if (!user) {
+    alert("Error: No authenticated user.");
+    return;
+  }
+  if (email && password) {
+    try {
+      const credential = window.EmailAuthProvider.credential(email, password);
+      await window.linkWithCredential(user, credential);
+      alert("Success! Your account is now safe. You can log in on any device.");
+    } catch (error) {
+      console.error(error);
+      alert("Error: " + (error && error.message ? error.message : String(error)));
+    }
+  }
+}
+window.secureMyAccount = secureMyAccount;
 
 async function initApp() {
   if (!firebaseConfig) {
