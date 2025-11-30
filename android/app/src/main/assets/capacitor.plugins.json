@@ -1,0 +1,14 @@
+[
+	{
+		"pkg": "@capacitor-community/contacts",
+		"classpath": "getcapacitor.community.contacts.ContactsPlugin"
+	},
+	{
+		"pkg": "@ebarooni/capacitor-calendar",
+		"classpath": "dev.barooni.capacitor.calendar.CapacitorCalendarPlugin"
+	},
+	{
+		"pkg": "@team-lepisode/capacitor-google-login",
+		"classpath": "com.lepisode.capacitor.googlelogin.CapacitorGoogleLoginPlugin"
+	}
+]

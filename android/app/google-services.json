@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1083294283084",
+    "project_id": "appointment-maker-pro",
+    "storage_bucket": "appointment-maker-pro.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083294283084:android:de269362b360c70bfbcbe9",
+        "android_client_info": {
+          "package_name": "com.rc.appointmentmaker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1083294283084-dfc4606rr7r6g4qgc56t3vmo6ihqkkol.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rc.appointmentmaker",
+            "certificate_hash": "264ad56377653d95f754ca381bd36a2332554b6c"
+          }
+        },
+        {
+          "client_id": "1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtQ4Np51Z7bpVZeE4UFXZWpHKup6Vy5uk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

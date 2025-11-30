@@ -1,0 +1,28 @@
+# Node / Capacitor
+node_modules/
+npm-debug.log*
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Android build outputs
+android/.gradle/
+android/app/.gradle/
+android/build/
+android/app/build/
+android/.idea/
+android/app/.idea/
+android/local.properties
+android/app/local.properties
+*.iml
+
+# Cordova/Capacitor plugin build outputs
+android/capacitor-cordova-android-plugins/build/
+
+# VSCode settings (optional)
+.vscode/
+
+# Trae/IDE temp
+.trae/

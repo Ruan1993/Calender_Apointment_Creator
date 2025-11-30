@@ -1,0 +1,8 @@
+﻿<resources>
+    <string name="app_name">Appointment Maker Pro</string>
+    <string name="title_activity_main">Appointment Maker Pro</string>
+    <string name="package_name">com.rc.appointmentmaker</string>
+    <string name="custom_url_scheme">com.rc.appointmentmaker</string>
+
+    <string name="server_client_id">1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com</string>
+</resources>
