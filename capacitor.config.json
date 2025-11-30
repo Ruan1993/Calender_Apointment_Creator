@@ -1,0 +1,12 @@
+{
+  "appId": "com.rc.appointmentmaker",
+  "appName": "Appointment Maker Pro",
+  "webDir": "www",
+  "plugins": {
+    "GoogleLogin": {
+      "android": {
+        "clientId": "1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com"
+      }
+    }
+  }
+}

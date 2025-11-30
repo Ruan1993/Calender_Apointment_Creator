@@ -1,4 +1,4 @@
-const CACHE_NAME = "appointment-app-v3";
+const CACHE_NAME = "appointment-app-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,12 +24,36 @@ self.addEventListener("activate", (event) => {
       Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
     )
   );
+  if (self.registration && self.registration.navigationPreload) {
+    self.registration.navigationPreload.enable().catch(() => {});
+  }
   self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  if (req.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const preload = await event.preloadResponse;
+          if (preload) return preload;
+          const network = await fetch(req);
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(req, network.clone());
+          return network;
+        } catch (_) {
+          const cache = await caches.open(CACHE_NAME);
+          const cachedIndex = await cache.match("./index.html");
+          return (
+            cachedIndex || (await caches.match(req)) || new Response("Offline", { status: 503 })
+          );
+        }
+      })()
+    );
+    return;
+  }
   event.respondWith(
     caches.match(req).then((cached) => {
       const fromNetwork = fetch(req)

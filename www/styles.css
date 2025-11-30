@@ -1,0 +1,278 @@
+html,
+body {
+  font-family: "Inter", sans-serif;
+  /* Modern Mesh Gradient Base */
+  background-color: #f1f5f9;
+  background-image: radial-gradient(
+      at 0% 0%,
+      rgba(99, 102, 241, 0.15) 0px,
+      transparent 50%
+    ),
+    radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(14, 165, 233, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
+  background-size: cover;
+  -webkit-tap-highlight-color: transparent;
+  color: #1e293b;
+}
+
+body.dark {
+  background-color: #0f172a;
+  background-image: radial-gradient(at 0% 0%, rgba(99,102,241,0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(14,165,233,0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(99,102,241,0.06) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(14,165,233,0.06) 0px, transparent 50%);
+  color: #e2e8f0;
+}
+
+/* Limit App Width on Desktop */
+#app {
+  height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  /* Important: Make app wrapper transparent so body gradient shows */
+  background: transparent !important;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+/* --- GLASSMORPHISM MAGIC --- */
+
+/* Override Tailwind's bg-white to be translucent frosted glass */
+.bg-white {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+body.dark .bg-white {
+  background-color: rgba(17, 24, 39, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Modern Header Gradient */
+.glass-header {
+  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  padding-top: 1.75rem;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .glass-header {
+    padding-top: calc(1rem + env(safe-area-inset-top));
+  }
+}
+
+@media (max-width: 480px) {
+  .glass-header {
+    padding-top: 2.5rem;
+    padding-bottom: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #bottom-nav > div {
+    height: 72px !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+/* Form Inputs Modernization */
+input,
+select,
+textarea {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(203, 213, 225, 0.6) !important;
+  backdrop-filter: blur(4px);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  background-color: #fff !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+  border-color: #6366f1 !important;
+}
+
+/* Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Override standard colors for better contrast on glass */
+.text-gray-500 {
+  color: #64748b !important;
+}
+.text-gray-600 {
+  color: #475569 !important;
+}
+.text-gray-700 {
+  color: #334155 !important;
+}
+.text-gray-800 {
+  color: #1e293b !important;
+}
+
+body.dark .text-gray-500 { color: #94a3b8 !important; }
+body.dark .text-gray-600 { color: #cbd5e1 !important; }
+body.dark .text-gray-700 { color: #e2e8f0 !important; }
+body.dark .text-gray-800 { color: #e5e7eb !important; }
+body.dark .text-gray-900 { color: #f1f5f9 !important; }
+body.dark .text-black { color: #f8fafc !important; }
+
+/* Card Hover Effects */
+.bg-white.p-4.rounded-xl {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+/* Only hover effect on non-touch or distinct cards */
+.bg-white.p-4.rounded-xl:active {
+  transform: scale(0.98);
+}
+
+body.dark .bg-white\/80 {
+  background-color: rgba(17, 24, 39, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+body.dark .bg-white\/95 {
+  background-color: rgba(17, 24, 39, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+body.dark .bg-white\/20 {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+body.dark .text-gray-400 { color: #cbd5e1 !important; }
+body.dark .bg-gray-50 { background-color: rgba(17, 24, 39, 0.6) !important; color: #e2e8f0 !important; }
+body.dark .border-gray-100 { border-color: rgba(148, 163, 184, 0.15) !important; }
+body.dark .border-gray-300 { border-color: rgba(148, 163, 184, 0.35) !important; }
+body.dark .border-white\/40 { border-color: rgba(255, 255, 255, 0.14) !important; }
+body.dark .border-white\/50 { border-color: rgba(255, 255, 255, 0.18) !important; }
+body.dark input,
+body.dark select,
+body.dark textarea {
+  background-color: rgba(2, 6, 23, 0.7) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #e2e8f0 !important;
+}
+body.dark input:focus,
+body.dark select:focus,
+body.dark textarea:focus {
+  background-color: rgba(2, 6, 23, 0.9) !important;
+}
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.dark button.bg-white,
+body.dark button.bg-white\/20,
+body.dark button.bg-white\/80,
+body.dark button.bg-white\/95,
+body.dark button.hover\:bg-white:hover {
+  color: #000 !important;
+}
+body.dark button.bg-white i,
+body.dark button.bg-white\/20 i,
+body.dark button.bg-white\/80 i,
+body.dark button.bg-white\/95 i,
+body.dark button.hover\:bg-white:hover i {
+  color: #000 !important;
+}
+
+/* Dark mode: force black text on light-gray buttons */
+body.dark button.bg-gray-50,
+body.dark button.bg-gray-100,
+body.dark button.bg-gray-200 {
+  color: #000 !important;
+}
+body.dark button.bg-gray-50 i,
+body.dark button.bg-gray-100 i,
+body.dark button.bg-gray-200 i {
+  color: #000 !important;
+}
+
+/* Dark mode: ensure segmented controls show black text on light containers */
+body.dark .shadow-inner.bg-gray-100 button:not(.bg-indigo-600) {
+  color: #000 !important;
+}
+body.dark .shadow-inner.bg-gray-100 .text-gray-700 {
+  color: #000 !important;
+}
+body.dark .shadow-inner.bg-gray-100 .text-gray-900,
+body.dark .shadow-inner.bg-gray-100 .text-black {
+  color: #000 !important;
+}
+
+/* Safe-area aware positioning for bottom nav */
+#bottom-nav { }
+@supports (bottom: env(safe-area-inset-bottom)) {
+  #bottom-nav {
+    bottom: calc(env(safe-area-inset-bottom) + 2rem);
+  }
+}
+
+#main-content {
+  padding-bottom: 10rem;
+}
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  #main-content {
+    padding-bottom: calc(10rem + env(safe-area-inset-bottom));
+  }
+}
+
+#back-to-top {
+  z-index: 60;
+  bottom: 6.5rem;
+  right: 1rem;
+}
+@supports (bottom: env(safe-area-inset-bottom)) {
+  #back-to-top {
+    bottom: calc(6.5rem + env(safe-area-inset-bottom));
+  }
+}
+@supports (right: env(safe-area-inset-right)) {
+  #back-to-top {
+    right: calc(1rem + env(safe-area-inset-right));
+  }
+}
+
+/* Dark mode hover adjustments */
+body.dark .hover\:bg-gray-100:hover {
+  background-color: rgba(148, 163, 184, 0.18) !important;
+}
+body.dark .hover\:bg-indigo-100:hover {
+  background-color: rgba(99, 102, 241, 0.22) !important;
+}
+body.dark .hover\:bg-white:hover {
+  background-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+body.dark .bg-indigo-50 { color: #000 !important; }
+body.dark .bg-indigo-50 .text-gray-800 { color: #000 !important; }
+body.dark .bg-indigo-50 .text-gray-700 { color: #000 !important; }
+body.dark .bg-indigo-50 .text-gray-900 { color: #000 !important; }

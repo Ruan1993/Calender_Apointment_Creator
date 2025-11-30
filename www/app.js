@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import {
   getAuth,
   signInAnonymously,
@@ -8,7 +8,15 @@ import {
   browserLocalPersistence,
   linkWithCredential,
   EmailAuthProvider,
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithCredential,
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getFirestore,
   doc,
@@ -21,18 +29,27 @@ import {
   serverTimestamp,
   deleteDoc,
   updateDoc,
-} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-analytics.js";
+import { setLogLevel } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 window.initializeApp = initializeApp;
 window.getAuth = getAuth;
 window.signInAnonymously = signInAnonymously;
 window.signInWithCustomToken = signInWithCustomToken;
+window.signInWithEmailAndPassword = signInWithEmailAndPassword;
 window.onAuthStateChanged = onAuthStateChanged;
 window.setPersistence = setPersistence;
 window.browserLocalPersistence = browserLocalPersistence;
 window.linkWithCredential = linkWithCredential;
 window.EmailAuthProvider = EmailAuthProvider;
+window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.signOut = signOut;
+window.GoogleAuthProvider = GoogleAuthProvider;
+window.signInWithPopup = signInWithPopup;
+window.signInWithRedirect = signInWithRedirect;
+window.getRedirectResult = getRedirectResult;
+window.signInWithCredential = signInWithCredential;
 window.getFirestore = getFirestore;
 window.doc = doc;
 window.setDoc = setDoc;
@@ -44,20 +61,21 @@ window.where = where;
 window.serverTimestamp = serverTimestamp;
 window.deleteDoc = deleteDoc;
 window.updateDoc = updateDoc;
+window.getAnalytics = getAnalytics;
 window.setLogLevel = setLogLevel;
 
 setLogLevel("debug");
 
-const appId = "calender-appointment-creator";
+const appId = "appointment-maker-pro";
 
 const FIREBASE_CONFIG_OBJECT = {
-  apiKey: "AIzaSyB6hKAJJwaGrkoAcY0r0gfkR1d7OtbzIt8",
-  authDomain: "calender-apointment-creator.firebaseapp.com",
-  projectId: "calender-apointment-creator",
-  storageBucket: "calender-apointment-creator.firebasestorage.app",
-  messagingSenderId: "976887592733",
-  appId: "1:976887592733:web:97ee6118678c01138993f4",
-  measurementId: "G-X84XF3B1KZ",
+  apiKey: "AIzaSyDEIMyAdZ-5IvsOdeZCZnWcpr5QpOhU5b4",
+  authDomain: "appointment-maker-pro.firebaseapp.com",
+  projectId: "appointment-maker-pro",
+  storageBucket: "appointment-maker-pro.firebasestorage.app",
+  messagingSenderId: "1083294283084",
+  appId: "1:1083294283084:web:014f109dfd815092fbcbe9",
+  measurementId: "G-DBF2HMR5FN",
 };
 
 const firebaseConfig = FIREBASE_CONFIG_OBJECT;
@@ -77,7 +95,10 @@ window.state = {
   isAuthReady: false,
   editingAppointmentId: null,
   upcomingMode: "list",
+  theme: (localStorage.getItem('amp-theme') || 'light'),
 };
+
+applyTheme();
 
 const months = [
   "January",
@@ -94,6 +115,58 @@ const months = [
   "December",
 ];
 const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function isOnline() {
+  return navigator.onLine;
+}
+
+function getPendingKey() {
+  return `pendingAppointments:${userId || 'unknown'}`;
+}
+
+function readPendingAppointments() {
+  try {
+    const raw = localStorage.getItem(getPendingKey());
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingAppointments(list) {
+  try {
+    localStorage.setItem(getPendingKey(), JSON.stringify(list || []));
+  } catch {}
+}
+
+function queuePendingAppointment(op, data, id) {
+  const list = readPendingAppointments();
+  const item = { op, data, id: id || null, ts: Date.now() };
+  list.push(item);
+  writePendingAppointments(list);
+}
+
+async function syncPendingAppointments() {
+  if (!isOnline()) return;
+  const appointmentsRef = getAppointmentsRef();
+  if (!appointmentsRef) return;
+  let list = readPendingAppointments();
+  if (!list.length) return;
+  const remaining = [];
+  for (const item of list) {
+    try {
+      if (item.op === 'update' && item.id) {
+        await window.updateDoc(window.doc(appointmentsRef, item.id), item.data);
+      } else {
+        await window.setDoc(window.doc(appointmentsRef), item.data);
+      }
+    } catch (e) {
+      remaining.push(item);
+    }
+  }
+  writePendingAppointments(remaining);
+  if (list.length !== remaining.length) displayMessage('Offline changes synced');
+}
 
 function formatDate(date) {
   const y = date.getFullYear();
@@ -125,6 +198,142 @@ function displayMessage(message, type = "success", duration = 3000) {
   box.classList.remove("hidden");
   setTimeout(() => box.classList.add("hidden"), duration);
 }
+
+function getDefaultCountryCode() {
+  const fromState = (window.state && window.state.whatsappCountryCode) ? String(window.state.whatsappCountryCode) : null;
+  const fromStorage = localStorage.getItem('amp-whatsapp-cc');
+  const v = (fromStorage || fromState || '27').replace(/\D/g, '');
+  return v || '27';
+}
+
+function normalizeWhatsAppNumber(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const cc = getDefaultCountryCode();
+  if (digits.startsWith("0")) return `${cc}${digits.slice(1)}`;
+  return digits;
+}
+
+function applyTheme() {
+  const t = window.state.theme || 'light';
+  document.body.classList.toggle('dark', t === 'dark');
+}
+
+function toggleTheme() {
+  const next = window.state.theme === 'dark' ? 'light' : 'dark';
+  window.state.theme = next;
+  localStorage.setItem('amp-theme', next);
+  applyTheme();
+}
+window.toggleTheme = toggleTheme;
+
+function getLanguage() {
+  return localStorage.getItem('amp-lang') || (window.state && window.state.language) || 'en';
+}
+
+function getLocalizedWhatsAppText(appt, dateDisplay) {
+  const name = appt.clientName || '';
+  const time = appt.time || '';
+  const lang = getLanguage();
+  if (lang === 'af') return `Hallo ${name}, jou afspraak is op ${dateDisplay} om ${time}. Sien jou gou!`;
+  if (lang === 'zu') return `Sawubona ${name}, umhlangano wakho use ${dateDisplay} nge ${time}. Sizobonana maduze!`;
+  return `Hi ${name}, your appointment is on ${dateDisplay} at ${time}. See you soon!`;
+}
+
+function toggleSettingsMenu() {
+  const menu = document.getElementById('settings-menu');
+  if (!menu) return;
+  const ccInput = document.getElementById('whatsapp-cc-input');
+  const langSel = document.getElementById('language-select');
+  if (ccInput) ccInput.value = getDefaultCountryCode();
+  const lang = getLanguage();
+  if (langSel) langSel.value = lang;
+  menu.classList.toggle('hidden');
+  if (!menu.classList.contains('hidden')) {
+    const handler = (e) => {
+      if (!menu.contains(e.target)) {
+        menu.classList.add('hidden');
+        document.removeEventListener('click', handler);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', handler), 0);
+  }
+}
+window.toggleSettingsMenu = toggleSettingsMenu;
+
+function saveSettingsMenu() {
+  const ccInput = document.getElementById('whatsapp-cc-input');
+  const langSel = document.getElementById('language-select');
+  if (ccInput) {
+    const v = String(ccInput.value || '').replace(/\D/g, '');
+    if (v) {
+      localStorage.setItem('amp-whatsapp-cc', v);
+      window.state.whatsappCountryCode = v;
+    }
+  }
+  if (langSel) {
+    const v = String(langSel.value || 'en');
+    localStorage.setItem('amp-lang', v);
+    window.state.language = v;
+  }
+  const menu = document.getElementById('settings-menu');
+  if (menu) menu.classList.add('hidden');
+  displayMessage('Settings saved');
+}
+window.saveSettingsMenu = saveSettingsMenu;
+
+async function logout() {
+  const menu = document.getElementById('settings-menu');
+  if (menu) menu.classList.add('hidden');
+  const confirm = await showConfirmModal('Sign Out', 'Are you sure you want to sign out?', { okText: 'Yes' });
+  if (!confirm) return;
+  try {
+    const a = auth || (window.getAuth ? window.getAuth() : null);
+    if (a) await window.signOut(a);
+  } finally {
+    displayMessage('Signed out');
+  }
+}
+window.logout = logout;
+
+function rateApp() {
+  const pkg = 'com.rc.appointmentmaker';
+  const web = `https://play.google.com/store/apps/details?id=${pkg}`;
+  const url = `market://details?id=${pkg}`;
+  try {
+    window.open(url, '_blank');
+  } catch {
+    window.open(web, '_blank');
+  }
+}
+window.rateApp = rateApp;
+
+function shareApp() {
+  const url = 'https://play.google.com/store/apps/details?id=com.rc.appointmentmaker';
+  const title = 'Appointment Maker Pro';
+  const text = 'Check out Appointment Maker Pro';
+  if (navigator.share) {
+    navigator.share({ title, text, url }).catch(() => {});
+  } else {
+    try {
+      navigator.clipboard.writeText(url).then(() => displayMessage('Link copied'));
+    } catch {
+      window.open(url, '_blank');
+    }
+  }
+}
+window.shareApp = shareApp;
+
+function openPrivacyPolicy() {
+  try { location.href = 'privacy.html'; } catch (_) { window.open('privacy.html', '_blank'); }
+}
+window.openPrivacyPolicy = openPrivacyPolicy;
+
+function openTermsOfService() {
+  try { location.href = 'terms.html'; } catch (_) { window.open('terms.html', '_blank'); }
+}
+window.openTermsOfService = openTermsOfService;
+
 
 function parseDurationToMinutes(input) {
   const s = String(input || "").trim().toLowerCase();
@@ -360,7 +569,7 @@ function cancelEditAppointment() {
 }
 window.cancelEditAppointment = cancelEditAppointment;
 
-function showConfirmModal(title, message) {
+function showConfirmModal(title, message, options = {}) {
   return new Promise((resolve) => {
     const modal = document.getElementById("confirm-modal");
     const titleEl = document.getElementById("confirm-modal-title");
@@ -370,6 +579,8 @@ function showConfirmModal(title, message) {
 
     titleEl.textContent = title;
     messageEl.textContent = message;
+    if (options && options.okText) okBtn.textContent = String(options.okText);
+    if (options && options.cancelText) cancelBtn.textContent = String(options.cancelText);
 
     const bg = document.getElementById("confirm-modal-bg");
     const panel = document.getElementById("confirm-modal-panel");
@@ -411,7 +622,39 @@ window.showConfirmModal = showConfirmModal;
 
 async function pickContact() {
   try {
-    if (navigator.contacts && navigator.contacts.select) {
+    const cap = window.Capacitor;
+    const plugin = cap && cap.Plugins ? (cap.Plugins.Contacts || cap.Plugins.ContactsPlugin) : (window.Contacts || null);
+    if (plugin) {
+      if (typeof plugin.checkPermissions === "function") {
+        try {
+          const status = await plugin.checkPermissions();
+          const granted = status && (status.granted === true || status.contacts === "granted");
+          if (!granted && typeof plugin.requestPermissions === "function") {
+            await plugin.requestPermissions();
+          }
+        } catch (_) {}
+      }
+      let selected = null;
+      if (typeof plugin.pickContact === "function") {
+        const res = await plugin.pickContact({ projection: { name: true, phones: true, emails: true } });
+        if (res && res.contact) selected = res.contact;
+      } else if (typeof plugin.getContacts === "function") {
+        const res = await plugin.getContacts({ projection: { name: true, phones: true, emails: true } });
+        if (res && Array.isArray(res.contacts) && res.contacts.length) selected = res.contacts[0];
+      }
+      if (selected) {
+        const name = (selected.name && (selected.name.display || [selected.name.given, selected.name.family].filter(Boolean).join(" "))) || "";
+        const tel = (Array.isArray(selected.phones) && selected.phones.length ? (selected.phones[0].number || "") : "");
+        const form = document.getElementById("appointment-form");
+        if (form) {
+          if (name) form.clientName.value = name;
+          if (tel) form.phone.value = tel;
+          displayMessage("Contact details added.");
+        }
+      } else {
+        displayMessage("No contact selected or plugin unavailable.");
+      }
+    } else if (navigator.contacts && navigator.contacts.select) {
       const contacts = await navigator.contacts.select(["name", "tel"], {
         multiple: false,
       });
@@ -429,56 +672,10 @@ async function pickContact() {
           if (tel) form.phone.value = tel;
         }
       } else {
-        if ((window.state.contacts || []).length > 0) {
-          openContactsModal();
-        } else {
-          const form = document.getElementById("appointment-form");
-          if (form) {
-            const name = window.prompt(
-              "Enter contact name:",
-              form.clientName.value || ""
-            );
-            const tel = window.prompt(
-              "Enter phone number:",
-              form.phone.value || ""
-            );
-            if (name) form.clientName.value = name;
-            if (tel) form.phone.value = tel;
-            if (name || tel) displayMessage("Contact details added.");
-          }
-        }
+        openContactsModal();
       }
     } else {
-      if ((window.state.contacts || []).length > 0) {
-        openContactsModal();
-      } else {
-        const form = document.getElementById("appointment-form");
-        if (form) {
-          const name = window.prompt(
-            "Enter contact name:",
-            form.clientName.value || ""
-          );
-          const tel = window.prompt(
-            "Enter phone number:",
-            form.phone.value || ""
-          );
-          if (name) form.clientName.value = name;
-          if (tel) form.phone.value = tel;
-          if (name || tel) displayMessage("Contact details added.");
-          else
-            displayMessage(
-              "Contact Picker not supported on this device/browser.",
-              "error",
-              4000
-            );
-        } else {
-          displayMessage(
-            "Contact Picker not supported on this device/browser.",
-            "error",
-            4000
-          );
-        }
-      }
+      openContactsModal();
     }
   } catch (e) {
     displayMessage("Unable to access contacts: " + e.message, "error", 4000);
@@ -493,31 +690,132 @@ function showLoading(show) {
   document.getElementById("service-management-view").classList.toggle("hidden", show);
 }
 
-async function secureMyAccount() {
-  const user = auth && auth.currentUser;
-  const email = prompt("Enter your email address:");
-  const password = prompt("Create a password:");
-  if (!user) {
-    alert("Please wait for the app to finish loading your data first.");
+window.authMode = "login";
+window.toggleAuthMode = function () {
+  const title = document.getElementById("auth-title");
+  const button = document.getElementById("auth-button");
+  const toggleText = document.getElementById("auth-toggle-text");
+  const overlay = document.getElementById("login-overlay");
+  const errorMsg = document.getElementById("login-error");
+  if (errorMsg) errorMsg.classList.add("hidden");
+  const toggleButton = overlay ? overlay.querySelector(".text-indigo-600") : null;
+  if (window.authMode === "login") {
+    window.authMode = "register";
+    if (title) title.textContent = "Create New Account";
+    if (button) button.textContent = "Register";
+    if (toggleText) toggleText.textContent = "Already have an account?";
+    if (toggleButton) toggleButton.textContent = "Sign In";
+  } else {
+    window.authMode = "login";
+    if (title) title.textContent = "Sign In";
+    if (button) button.textContent = "Log In";
+    if (toggleText) toggleText.textContent = "New user?";
+    if (toggleButton) toggleButton.textContent = "Register";
+  }
+};
+
+window.handleAuth = async function () {
+  const emailEl = document.getElementById("auth-email");
+  const passwordEl = document.getElementById("auth-password");
+  const errorMsg = document.getElementById("login-error");
+  const email = emailEl ? emailEl.value : "";
+  const password = passwordEl ? passwordEl.value : "";
+  if (errorMsg) errorMsg.classList.add("hidden");
+  if (!email || !password) {
+    if (errorMsg) {
+      errorMsg.textContent = "Please enter both email and password.";
+      errorMsg.classList.remove("hidden");
+    }
     return;
   }
-  if (email && password) {
-    try {
-      const credential = window.EmailAuthProvider.credential(email, password);
-      await window.linkWithCredential(user, credential);
-      alert("Success! Your account is now linked. You can safely install the new app and log in with this email.");
-      console.log("Account successfully linked to:", email);
-    } catch (error) {
-      console.error(error);
-      if (error && error.code === "auth/credential-already-in-use") {
-        alert("Error: That email is already used by another account. Please use a different email.");
-      } else {
-        alert("Error linking account: " + (error && error.message ? error.message : String(error)));
-      }
+  const a = auth || (window.getAuth ? window.getAuth() : null);
+  if (!a) {
+    if (errorMsg) {
+      errorMsg.textContent = "App not connected to Firebase. Check config.";
+      errorMsg.classList.remove("hidden");
+    }
+    return;
+  }
+  try {
+    if (window.authMode === "login") {
+      await window.signInWithEmailAndPassword(a, email, password);
+    } else {
+      await window.createUserWithEmailAndPassword(a, email, password);
+    }
+  } catch (error) {
+    console.error("Authentication failed:", error);
+    let msg = "An unknown error occurred.";
+    if (error && error.code === "auth/email-already-in-use") msg = "This email is already registered. Try signing in.";
+    else if (error && error.code === "auth/weak-password") msg = "Password should be at least 6 characters.";
+    else if (error && (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found")) msg = "Invalid email or password.";
+    if (errorMsg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.remove("hidden");
     }
   }
+};
+
+async function handleGoogleRedirectResult() {
+  try {
+    const a = auth || (window.getAuth ? window.getAuth() : null);
+    if (!a) return;
+    const res = await window.getRedirectResult(a);
+    if (res && res.user) {
+      displayMessage('Signed in with Google');
+      const overlay = document.getElementById('login-overlay');
+      if (overlay) overlay.classList.add('hidden');
+    }
+  } catch (e) {
+    console.warn('Google redirect failed:', e);
+  }
 }
-window.secureMyAccount = secureMyAccount;
+
+window.googleLogin = async function () {
+  const a = auth || (window.getAuth ? window.getAuth() : null);
+  if (!a) return;
+  try {
+    const cap = window.Capacitor;
+    const isNative = !!(cap && typeof cap.getPlatform === 'function' && cap.getPlatform() !== 'web');
+    if (isNative) {
+      const gl = cap && cap.Plugins ? cap.Plugins.GoogleLogin : null;
+      if (gl && typeof gl.initialize === 'function' && typeof gl.login === 'function') {
+        await gl.initialize({ clientId: '1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com' });
+        const response = await gl.login();
+        const idToken = response && (response.idToken || (response.authentication && response.authentication.idToken));
+        if (!idToken) {
+          displayMessage('Login failed: Missing Google ID token', 'error', 6000);
+          return;
+        }
+        const credential = window.GoogleAuthProvider.credential(idToken);
+        await window.signInWithCredential(a, credential);
+        const overlay = document.getElementById('login-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        displayMessage('Signed in with Google (Native)');
+        return;
+      }
+      displayMessage('Google sign-in not available on device', 'error', 6000);
+      return;
+    }
+    const provider = new window.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await window.signInWithPopup(a, provider);
+  } catch (e) {
+    console.error('Google Login Error:', e);
+    displayMessage('Login failed: ' + (e.message || JSON.stringify(e)), 'error', 6000);
+  }
+};
+
+window.togglePasswordVisibility = function () {
+  const input = document.getElementById("auth-password");
+  const icon = document.getElementById("password-visibility-icon");
+  if (!input) return;
+  const isHidden = input.type === "password";
+  input.type = isHidden ? "text" : "password";
+  if (icon) {
+    icon.classList.toggle("fa-eye", !isHidden);
+    icon.classList.toggle("fa-eye-slash", isHidden);
+  }
+};
 
 async function initApp() {
   if (!firebaseConfig) {
@@ -539,44 +837,53 @@ async function initApp() {
 
     db = getFirestore(app);
     auth = getAuth(app);
+    try {
+      window.analytics = window.getAnalytics(app);
+    } catch (e) {
+      console.warn("Analytics initialization skipped:", e);
+    }
 
     await setPersistence(auth, browserLocalPersistence).catch((e) => {
       console.warn("Persistence failed, continuing without it:", e);
     });
 
-    if (initialAuthToken) {
-      await window.signInWithCustomToken(auth, initialAuthToken);
-    } else {
-      await signInAnonymously(auth);
-    }
-
     onAuthStateChanged(auth, (user) => {
+      const overlay = document.getElementById("login-overlay");
       if (user) {
         userId = user.uid;
         window.state.isAuthReady = true;
         document.getElementById("user-id-display").textContent = `User ID: ${userId}`;
-        console.log("Authenticated with UID:", userId);
-        const linkBtn = document.getElementById("link-account-btn");
-        if (linkBtn) linkBtn.disabled = false;
-
-        listenForAppointments();
-        listenForServices();
-        listenForContacts();
-        render();
+        console.log("User logged in:", userId);
+        if (overlay) overlay.classList.add("hidden");
+        if (!window.appInitialized) {
+          window.appInitialized = true;
+          listenForAppointments();
+          listenForServices();
+          listenForContacts();
+          render();
+          syncPendingAppointments();
+        }
       } else {
-        console.log("Not authenticated.");
-        userId = crypto.randomUUID();
-        window.state.isAuthReady = true;
-        document.getElementById("user-id-display").textContent = `User ID: ${userId} (Anon)`;
-        const linkBtn = document.getElementById("link-account-btn");
-        if (linkBtn) linkBtn.disabled = false;
-        listenForAppointments();
-        listenForServices();
-        listenForContacts();
-        render();
+        console.log("User signed out, showing login screen.");
+        window.state.isAuthReady = false;
+        userId = "unknown";
+        if (window.__unsubs && window.__unsubs.length) {
+          try { window.__unsubs.forEach((u) => { try { u(); } catch (_) {} }); } finally { window.__unsubs = []; }
+        }
+        window.appInitialized = false;
+        window.state.appointments = [];
+        window.state.services = [];
+        window.state.contacts = [];
+        if (overlay) overlay.classList.remove("hidden");
+        const box = document.getElementById("message-box");
+        if (box) box.classList.add("hidden");
+        const appContent = document.getElementById("app-content");
+        if (appContent) appContent.innerHTML = appContent.innerHTML; // noop to maintain structure
       }
       showLoading(false);
     });
+
+    handleGoogleRedirectResult();
   } catch (error) {
     console.error("Firebase initialization or sign-in failed:", error);
     const code = error && error.code ? String(error.code) : "unknown";
@@ -592,6 +899,10 @@ async function initApp() {
   }
 }
 
+window.addEventListener('online', () => {
+  syncPendingAppointments();
+});
+
 function getAppointmentsRef() {
   if (!db || !userId) {
     console.error("Database or User ID not ready for appointments.");
@@ -604,9 +915,8 @@ function listenForAppointments() {
   const appointmentsRef = getAppointmentsRef();
   if (!appointmentsRef) return;
 
-  const q = window.query(appointmentsRef);
-
-  window.onSnapshot(
+  const q = window.query(appointmentsRef, window.orderBy('date', 'asc'));
+  const unsub = window.onSnapshot(
     q,
     (snapshot) => {
       let fetchedAppointments = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -621,12 +931,15 @@ function listenForAppointments() {
       console.log("Appointments updated:", window.state.appointments.length);
       renderCalendarView();
       renderUpcomingView();
+      scheduleReminders();
     },
     (error) => {
       console.error("Error listening to appointments:", error);
       displayMessage("Error fetching appointment data: " + error.message, "error", 5000);
     }
   );
+  window.__unsubs = window.__unsubs || [];
+  window.__unsubs.push(unsub);
 }
 
 async function saveAppointment(event) {
@@ -665,6 +978,11 @@ async function saveAppointment(event) {
     duration: totalDuration,
     phone: form.phone ? form.phone.value.trim() : "",
     notes: form.notes.value.trim(),
+    guestEmails: form.guestEmails ? form.guestEmails.value.trim() : "",
+    reminderMinutes: (() => {
+      const v = form.simpleReminder && form.simpleReminder.value ? Number(form.simpleReminder.value) : 0;
+      return Number.isFinite(v) && v > 0 ? v : 0;
+    })(),
     timestamp: window.serverTimestamp(),
   };
 
@@ -675,25 +993,222 @@ async function saveAppointment(event) {
     }
 
     const editingId = form.dataset.editingId || window.state.editingAppointmentId || null;
-    if (editingId) {
-      const docRef = window.doc(appointmentsRef, editingId);
-      await window.updateDoc(docRef, newAppointment);
-      displayMessage(`Appointment updated for ${newAppointment.clientName}.`);
+    if (!isOnline()) {
+      queuePendingAppointment(editingId ? 'update' : 'create', newAppointment, editingId || undefined);
+      // Optimistic UI update – show appointment immediately
+      if (!editingId) {
+        const tempId = `temp_${Date.now()}`;
+        const tempAppt = { ...newAppointment, id: tempId, pending: true };
+        window.state.appointments.push(tempAppt);
+        window.state.appointments.sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+        renderCalendarView();
+        renderUpcomingView();
+      }
+      displayMessage("Appointment added offline – will sync when back online", "success", 5000);
+      const mc1 = document.getElementById("main-content");
+      if (mc1) mc1.scrollTo({ top: 0, behavior: "smooth" });
       window.state.editingAppointmentId = null;
       delete form.dataset.editingId;
     } else {
-      await window.setDoc(window.doc(appointmentsRef), newAppointment);
-      displayMessage(`Appointment for ${newAppointment.clientName} (${newAppointment.service}) saved successfully!`);
+      if (editingId) {
+        const docRef = window.doc(appointmentsRef, editingId);
+        await window.updateDoc(docRef, newAppointment);
+        displayMessage(`Appointment updated for ${newAppointment.clientName}.`, "success", 5000);
+        const mc2 = document.getElementById("main-content");
+        if (mc2) mc2.scrollTo({ top: 0, behavior: "smooth" });
+        window.state.editingAppointmentId = null;
+        delete form.dataset.editingId;
+      } else {
+        await window.setDoc(window.doc(appointmentsRef), newAppointment);
+        displayMessage(`Appointment added: ${newAppointment.clientName} on ${newAppointment.date} at ${newAppointment.time}.`, "success", 5000);
+        const mc3 = document.getElementById("main-content");
+        if (mc3) mc3.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
 
     form.reset();
     changeView("upcoming");
   } catch (error) {
-    console.error("Error saving appointment:", error);
-    displayMessage("Failed to save appointment: " + error.message, "error", 5000);
+    const editingId = form.dataset.editingId || window.state.editingAppointmentId || null;
+    queuePendingAppointment(editingId ? 'update' : 'create', newAppointment, editingId || undefined);
+    // Optimistic UI update – show appointment immediately
+    if (!editingId) {
+      const tempId = `temp_${Date.now()}`;
+      const tempAppt = { ...newAppointment, id: tempId, pending: true };
+      window.state.appointments.push(tempAppt);
+      window.state.appointments.sort((a,b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+      renderCalendarView();
+      renderUpcomingView();
+    }
+    displayMessage("Appointment added offline – will sync when back online", "success", 5000);
+    const mc4 = document.getElementById("main-content");
+    if (mc4) mc4.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 window.saveAppointment = saveAppointment;
+
+function clearReminder() {
+  const amountEl = document.getElementById("reminderAmount");
+  const unitEl = document.getElementById("reminderUnit");
+  if (amountEl) amountEl.value = "";
+  if (unitEl) unitEl.value = "minutes";
+}
+window.clearReminder = clearReminder;
+
+function pad2(n) { return String(n).padStart(2, "0"); }
+function formatICSDate(dateObj) {
+  const y = dateObj.getUTCFullYear();
+  const m = pad2(dateObj.getUTCMonth() + 1);
+  const d = pad2(dateObj.getUTCDate());
+  const H = pad2(dateObj.getUTCHours());
+  const M = pad2(dateObj.getUTCMinutes());
+  const S = pad2(dateObj.getUTCSeconds());
+  return `${y}${m}${d}T${H}${M}${S}Z`;
+}
+
+function generateICS(appt) {
+  const start = new Date(`${appt.date}T${appt.time || "00:00"}`);
+  const end = new Date(start.getTime() + ((Number(appt.duration) || 30) * 60000));
+  const dtStart = formatICSDate(start);
+  const dtEnd = formatICSDate(end);
+  const now = new Date();
+  const dtStamp = formatICSDate(now);
+  const uid = `${appt.id || Math.random().toString(36).slice(2)}@appointmentmaker.local`;
+  const summary = `${appt.clientName} - ${appt.service || "Appointment"}`;
+  const description = (appt.notes || "").replace(/\n/g, "\\n");
+  let alarms = "";
+  const arr = Array.isArray(appt.alertsMinutes) && appt.alertsMinutes.length ? appt.alertsMinutes : (Number(appt.reminderMinutes) > 0 ? [Number(appt.reminderMinutes)] : []);
+  arr.forEach((m) => {
+    const mm = Number(m);
+    if (Number.isFinite(mm) && mm > 0) {
+      alarms += `BEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Reminder\nTRIGGER:-PT${mm}M\nEND:VALARM\n`;
+    }
+  });
+  const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Appointment Maker Pro//EN\nBEGIN:VEVENT\nUID:${uid}\nDTSTAMP:${dtStamp}\nDTSTART:${dtStart}\nDTEND:${dtEnd}\nSUMMARY:${summary}\nDESCRIPTION:${description}\n${alarms}END:VEVENT\nEND:VCALENDAR\n`;
+  return ics;
+}
+
+function getGoogleCalendarLink(appt) {
+  const start = new Date(`${appt.date}T${appt.time || "00:00"}`);
+  const end = new Date(start.getTime() + ((Number(appt.duration) || 30) * 60000));
+  const dtStart = formatICSDate(start);
+  const dtEnd = formatICSDate(end);
+  const text = encodeURIComponent(`${appt.clientName} - ${appt.service || "Appointment"}`);
+  const dates = encodeURIComponent(`${dtStart}/${dtEnd}`);
+  const detailsParts = [];
+  detailsParts.push(`Services: ${appt.service || ""}`);
+  if (appt.notes) detailsParts.push(appt.notes);
+  const details = encodeURIComponent(detailsParts.join("\n"));
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}`;
+}
+window.getGoogleCalendarLink = getGoogleCalendarLink;
+
+function downloadICSForAppointment(id) {
+  const appt = (window.state.appointments || []).find((a) => a.id === id);
+  if (!appt) return;
+  const ics = generateICS(appt);
+  const blob = new Blob([ics], { type: "text/calendar" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = `${appt.clientName || "appointment"}-${appt.date}`.replace(/[^a-z0-9_-]/gi, "_");
+  a.href = url;
+  a.download = `${safeName}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  displayMessage("Calendar event file downloaded.");
+}
+window.downloadICSForAppointment = downloadICSForAppointment;
+
+async function addToDeviceCalendar(id) {
+  const appt = (window.state.appointments || []).find((a) => a.id === id);
+  if (!appt) return;
+  const cap = window.Capacitor;
+  const cal = cap && cap.Plugins ? (cap.Plugins.Calendar || cap.Plugins.CapacitorCalendar) : null;
+  if (!cal) {
+    downloadICSForAppointment(id);
+    return;
+  }
+  try {
+    if (typeof cal.requestFullCalendarAccess === "function") {
+      await cal.requestFullCalendarAccess();
+    } else if (typeof cal.requestAllPermissions === "function") {
+      await cal.requestAllPermissions();
+    }
+    const start = new Date(`${appt.date}T${appt.time || "00:00"}`);
+    const end = new Date(start.getTime() + ((Number(appt.duration) || 30) * 60000));
+    const title = `${appt.clientName} - ${appt.service || "Appointment"}`;
+    const notes = appt.notes || "";
+    const baseAlerts = Array.isArray(appt.alertsMinutes) && appt.alertsMinutes.length ? appt.alertsMinutes : (Number(appt.reminderMinutes) > 0 ? [Number(appt.reminderMinutes)] : []);
+    const alertMinutes = baseAlerts.length ? baseAlerts.map((m) => -Number(m)).filter((n) => Number.isFinite(n)) : undefined;
+    let calendarId;
+    try {
+      if (typeof cal.listCalendars === "function") {
+        const list = await cal.listCalendars();
+        const arr = list && list.result ? list.result : [];
+        if (arr.length) {
+          const names = arr.map((c, i) => `${i + 1}. ${c.name}`).join("\n");
+          const sel = window.prompt(`Select calendar:\n${names}\nEnter number or leave blank for default:`) || "";
+          const idx = Number(sel) - 1;
+          if (Number.isInteger(idx) && idx >= 0 && idx < arr.length) {
+            calendarId = arr[idx].id;
+          }
+        }
+      }
+      if (!calendarId && typeof cal.getDefaultCalendar === "function") {
+        const def = await cal.getDefaultCalendar();
+        if (def && def.result && def.result.id) {
+          calendarId = def.result.id;
+        }
+      }
+    } catch (_) {}
+    const opts = {
+      title,
+      location: "",
+      description: notes,
+      startDate: start.getTime(),
+      endDate: end.getTime(),
+      alerts: alertMinutes,
+      calendarId,
+    };
+    const platform = cap.getPlatform ? cap.getPlatform() : "web";
+    if (typeof cal.createEvent === "function" && platform === "android") {
+      const attendees = (() => {
+        const raw = appt.guestEmails || "";
+        return raw
+          .split(",")
+          .map((s) => String(s).trim())
+          .filter((e) => e && /@/.test(e))
+          .map((email) => ({ email }));
+      })();
+      if (attendees.length) opts.attendees = attendees;
+      await cal.createEvent(opts);
+    } else if (typeof cal.createEventWithPrompt === "function") {
+      const invitees = (() => {
+        const raw = appt.guestEmails || "";
+        return raw
+          .split(",")
+          .map((s) => String(s).trim())
+          .filter((e) => e && /@/.test(e));
+      })();
+      if (invitees.length) opts.invitees = invitees;
+      await cal.createEventWithPrompt(opts);
+    } else if (typeof cal.createEvent === "function") {
+      await cal.createEvent(opts);
+    } else {
+      downloadICSForAppointment(id);
+      return;
+    }
+    if (typeof cal.openCalendar === "function") {
+      await cal.openCalendar({ date: start.getTime() });
+    }
+    displayMessage("Event added to device calendar.");
+  } catch (e) {
+    downloadICSForAppointment(id);
+  }
+}
+window.addToDeviceCalendar = addToDeviceCalendar;
 
 async function deleteAppointment(id) {
   const appointmentsRef = getAppointmentsRef();
@@ -729,8 +1244,7 @@ function listenForServices() {
   if (!servicesRef) return;
 
   const q = window.query(servicesRef, window.orderBy("name", "asc"));
-
-  window.onSnapshot(
+  const unsub = window.onSnapshot(
     q,
     (snapshot) => {
       window.state.services = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -746,6 +1260,8 @@ function listenForServices() {
       displayMessage("Error fetching service data: " + error.message, "error", 5000);
     }
   );
+  window.__unsubs = window.__unsubs || [];
+  window.__unsubs.push(unsub);
 }
 
 async function saveService(event) {
@@ -852,9 +1368,11 @@ function listenForContacts() {
   const contactsRef = getContactsRef();
   if (!contactsRef) return;
   const q = window.query(contactsRef, window.orderBy("name", "asc"));
-  window.onSnapshot(q, (snapshot) => {
+  const unsub = window.onSnapshot(q, (snapshot) => {
     window.state.contacts = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   });
+  window.__unsubs = window.__unsubs || [];
+  window.__unsubs.push(unsub);
 }
 
 function saveNewContact(name, phone) {
@@ -957,7 +1475,6 @@ function closeContactsModal() {
 function updateAppointmentDuration() {
   const serviceCheckboxes = document.querySelectorAll('input[name="serviceId"]');
   const durationInput = document.getElementById("duration");
-  const durationHmEl = document.getElementById("duration-hm");
   let totalDuration = 0;
 
   serviceCheckboxes.forEach((checkbox) => {
@@ -971,7 +1488,6 @@ function updateAppointmentDuration() {
   });
 
   durationInput.value = totalDuration > 0 ? totalDuration : 30;
-  if (durationHmEl) durationHmEl.textContent = formatHM(durationInput.value);
 }
 window.updateAppointmentDuration = updateAppointmentDuration;
 
@@ -1090,9 +1606,9 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
     appts.forEach((appt) => {
       const serviceDisplay = appt.service || "Service N/A";
       const phone = (appt.phone || "").trim();
-      const waNumber = phone.replace(/\D/g, "");
+      const waNumber = normalizeWhatsAppNumber(phone);
       const dateDisplay = new Date(`${dayKey}T${appt.time || "00:00"}`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-      const waText = encodeURIComponent(`Hi ${appt.clientName}, your appointment was on ${dateDisplay} at ${appt.time || ""}.`);
+      const waText = encodeURIComponent(getLocalizedWhatsAppText(appt, dateDisplay));
       const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : "";
       const telLink = phone ? `tel:${phone}` : "";
       const startMs = new Date(`${dayKey}T${appt.time || "00:00"}`).getTime();
@@ -1345,14 +1861,26 @@ function renderUpcomingView() {
                       <button onclick="setUpcomingMode('list')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${mode === "list" ? "bg-indigo-600 text-white shadow" : "text-gray-700 hover:bg-white"}">List</button>
                       <button onclick="setUpcomingMode('hourly')" class="flex-1 py-2 text-sm font-semibold rounded-lg transition ${mode === "hourly" ? "bg-indigo-600 text-white shadow" : "text-gray-700 hover:bg-white"}">Hourly</button>
                   </div>
+                   <div class="mb-4">
+                     <input id="upcoming-search" type="text" placeholder="Search by name, service, phone" class="w-full p-2 border border-gray-300 rounded-lg bg-white" value="${window.state.upcomingSearch || ''}">
+                   </div>
               `;
 
   const nowMs = Date.now();
+  const search = String(window.state.upcomingSearch || '').toLowerCase();
   const upcomingAppts = window.state.appointments
     .filter((appt) => {
       const startMs = new Date(`${appt.date}T${appt.time || "00:00"}`).getTime();
       const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
       return endMs >= nowMs;
+    })
+    .filter((appt) => {
+      if (!search) return true;
+      return (
+        String(appt.clientName || '').toLowerCase().includes(search) ||
+        String(appt.service || '').toLowerCase().includes(search) ||
+        String(appt.phone || '').toLowerCase().includes(search)
+      );
     });
 
   let listHTML = modeSelectorHTML + `
@@ -1375,10 +1903,11 @@ function renderUpcomingView() {
       const dateDisplay = new Date(`${appt.date}T${appt.time || "00:00"}`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
       const phone = (appt.phone || "").trim();
-      const waNumber = phone.replace(/\D/g, "");
-      const waText = encodeURIComponent(`Hi ${appt.clientName}, your appointment is on ${dateDisplay} at ${appt.time || ""}.`);
+      const waNumber = normalizeWhatsAppNumber(phone);
+      const waText = encodeURIComponent(getLocalizedWhatsAppText(appt, dateDisplay));
       const waLink = waNumber ? `https://wa.me/${waNumber}?text=${waText}` : "";
       const telLink = phone ? `tel:${phone}` : "";
+      const gcalLink = getGoogleCalendarLink(appt);
       const startMs = new Date(`${appt.date}T${appt.time || "00:00"}`).getTime();
       const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
       const isCompleted = Date.now() >= endMs;
@@ -1393,7 +1922,7 @@ function renderUpcomingView() {
             .join("")
         : `<span class="text-xs font-semibold uppercase text-indigo-500">${appt.service || "Service N/A"}</span>`;
       listHTML += `
-                        <div class="bg-white p-4 rounded-xl shadow-lg border border-indigo-100 flex justify_between items-start">
+                        <div class="bg-white pt-6 pr-4 pb-16 pl-4 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start" style="position: relative;">
                             <div class="flex-grow">
                                 <div class="flex flex-wrap">${serviceBadgesHTML}</div>
                                 <h4 class="text-lg font-bold text-gray-900">${appt.clientName}</h4>
@@ -1414,6 +1943,7 @@ function renderUpcomingView() {
                                     <i class="fas fa-trash-alt text-lg"></i>
                                 </button>
                             </div>
+                            <a href="${gcalLink}" target="_blank" class="px-2 py-1 text-xs bg-teal-600 text-white rounded-md hover:bg-teal-700 transition" style="position: absolute; right: 12px; bottom: 20px; z-index: 10;">Add to Google Calendar</a>
                         </div>
                     `;
     });
@@ -1423,15 +1953,23 @@ function renderUpcomingView() {
     const dayKey = formatDate(selectedDate);
     const selectedDateDisplay = selectedDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const navHTML = `
-                    <div class="mb-2 flex justify_between items-center px-2">
-                        <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron_left"></i></button>
-                        <h3 class="text_base font-semibold text-gray-800">${selectedDateDisplay}</h3>
-                        <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron_right"></i></button>
+                    <div class="mb-2 flex justify-between items-center px-2">
+                        <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
+                        <h3 class="text-base font-semibold text-gray-800">${selectedDateDisplay}</h3>
+                        <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 `;
     listHTML = modeSelectorHTML + navHTML + renderHourlySchedule(dayKey, "Hourly Plan");
   }
   container.innerHTML = listHTML;
+  const searchEl = document.getElementById('upcoming-search');
+  if (searchEl && !searchEl.__init) {
+    searchEl.__init = true;
+    searchEl.addEventListener('input', () => {
+      window.state.upcomingSearch = searchEl.value;
+      renderUpcomingView();
+    });
+  }
   if (main) {
     main.scrollTop = prevScroll;
     const btn = document.getElementById("back-to-top");
@@ -1455,6 +1993,45 @@ function setUpcomingMode(mode) {
   renderUpcomingView();
 }
 window.setUpcomingMode = setUpcomingMode;
+
+async function initNotifications() {
+  try {
+    if (!('Notification' in window)) return;
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    window.__swReg = reg;
+  } catch {}
+}
+
+function scheduleReminders() {
+  const reg = window.__swReg;
+  if (!reg || !('showNotification' in reg)) return;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!window.__reminderTimers) window.__reminderTimers = new Map();
+  const now = Date.now();
+  const maxAhead = 7 * 24 * 60 * 60 * 1000;
+  (window.state.appointments || []).forEach((appt) => {
+    const rm = Number(appt.reminderMinutes) || 0;
+    if (!rm) return;
+    const startMs = new Date(`${appt.date}T${appt.time || '00:00'}`).getTime();
+    const triggerMs = startMs - rm * 60000;
+    const delay = triggerMs - now;
+    if (delay <= 0 || delay > maxAhead) return;
+    if (window.__reminderTimers.has(appt.id)) return;
+    const t = setTimeout(() => {
+      reg.showNotification('Upcoming appointment', {
+        body: `${appt.clientName} • ${appt.service || ''} at ${appt.time || ''}`,
+        tag: `appt-${appt.id}`,
+        badge: undefined,
+        icon: undefined,
+      });
+      window.__reminderTimers.delete(appt.id);
+    }, delay);
+    window.__reminderTimers.set(appt.id, t);
+  });
+}
 
 function renderAddAppointmentView() {
   const container = document.getElementById("add-appointment-view");
@@ -1516,17 +2093,33 @@ function renderAddAppointmentView() {
                               </div>
 
                               <div>
-                                  <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration</label>
-                                  <input type="number" id="duration" name="duration" min="5" value="30" readonly
-                                         class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm" aria-describedby="duration-hm">
-                                  <p id="duration-hm" class="text-sm font-medium text-gray-700 mt-1">30m</p>
-                                  <p class="text-xs text-gray-500">Duration sums up based on the selected services.</p>
+                                  <label class="block text-sm font-medium text-gray-700 mb-1">Reminder before appointment</label>
+                                  <select id="simpleReminder" name="simpleReminder" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm">
+                                      <option value="0">None</option>
+                                      <option value="15">15 minutes before</option>
+                                      <option value="30">30 minutes before</option>
+                                      <option value="60">1 hour before</option>
+                                      <option value="1440">1 day before</option>
+                                  </select>
                               </div>
 
+                              
+
                               <div>
-                                  <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                                  <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
+                                  <label for="duration" class="block text-sm font-medium text-gray-700 mb-1">Total Duration (minutes)</label>
+                                  <input type="number" id="duration" name="duration" min="5" value="30" readonly
+                                         class="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed font-bold text-indigo-600 transition shadow-sm">
                               </div>
+
+                              <details class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                  <summary class="cursor-pointer text-sm font-semibold text-gray-700">Add Notes</summary>
+                                  <div class="mt-3 space-y-3">
+                                      <div>
+                                          <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                                          <textarea id="notes" name="notes" rows="3" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition shadow-sm" placeholder="Details about the client or service."></textarea>
+                                      </div>
+                                  </div>
+                              </details>
 
                               <button type="submit" id="appointment-submit-btn" class="w-full py-3 mt-6 bg-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:bg-indigo-700 transition duration-300 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 flex items-center justify-center">
                                   <i class="fas fa-calendar-plus mr-2"></i> Save Appointment
@@ -1555,6 +2148,16 @@ function renderAddAppointmentView() {
       form.date.value = appt.date || defaultDate;
       form.time.value = appt.time || defaultTime;
       form.notes.value = appt.notes || "";
+      const rm = Number(appt.reminderMinutes) || 0;
+      const sr = document.getElementById("simpleReminder");
+      if (sr) {
+        const allowed = [0, 15, 30, 60, 1440];
+        sr.value = allowed.includes(rm) ? String(rm) : "0";
+      }
+      if (appt.guestEmails) {
+        const el2 = document.getElementById("guestEmails");
+        if (el2) el2.value = appt.guestEmails;
+      }
       if (Array.isArray(appt.serviceDetails)) {
         const ids = new Set(appt.serviceDetails.map((s) => s.id));
         form.querySelectorAll('input[name="serviceId"]').forEach((cb) => {
@@ -1692,12 +2295,15 @@ function renderServiceManagementView() {
 window.renderServiceManagementView = renderServiceManagementView;
 
 window.onload = initApp;
-changeView("calendar");
+const __dv = localStorage.getItem('amp-default-view') || 'calendar';
+changeView(__dv);
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {
     // ignore registration errors to avoid impacting app usage
   });
 }
+applyTheme();
+initNotifications();
 setInterval(() => {
   if (window.state && window.state.currentView === "upcoming") {
     renderUpcomingView();
