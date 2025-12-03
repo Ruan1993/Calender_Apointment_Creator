@@ -981,6 +981,10 @@ async function initApp() {
         if (box) box.classList.add("hidden");
         const appContent = document.getElementById("app-content");
         if (appContent) appContent.innerHTML = appContent.innerHTML; // noop to maintain structure
+        if (!window.__anonAttempted) {
+          window.__anonAttempted = true;
+          try { window.signInAnonymously(auth); } catch (_) {}
+        }
       }
       showLoading(false);
     });
