@@ -2597,6 +2597,17 @@ if ("serviceWorker" in navigator) {
 }
 applyTheme();
 initNotifications();
+function bindAuthEvents() {
+  const ov = document.getElementById('login-overlay');
+  if (!ov) return;
+  const hb = document.getElementById('auth-button');
+  if (hb) hb.addEventListener('click', window.handleAuth);
+  ov.querySelectorAll('[onclick="googleLogin()"]').forEach((el) => el.addEventListener('click', window.googleLogin));
+  ov.querySelectorAll('[onclick="resetPassword()"]').forEach((el) => el.addEventListener('click', window.resetPassword));
+  ov.querySelectorAll('[onclick="togglePasswordVisibility()"]').forEach((el) => el.addEventListener('click', window.togglePasswordVisibility));
+  ov.querySelectorAll('[onclick="toggleAuthMode()"]').forEach((el) => el.addEventListener('click', window.toggleAuthMode));
+}
+bindAuthEvents();
 setInterval(() => {
   if (window.state && window.state.currentView === "upcoming") {
     renderUpcomingView();
