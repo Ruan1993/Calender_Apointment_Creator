@@ -1,14 +1,14 @@
-const CACHE_NAME = "appointment-app-v6";
+const CACHE_NAME = "appointment-app-v7";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=dayview-v2",
+  "./app.js?v=dayview-v3",
   "./styles.css",
   "./tailwind.css",
   "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",
-  "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
-  "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
-  "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js",
+  "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js",
+  "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js",
+  "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js",
 ];
 
 self.addEventListener("install", (event) => {
