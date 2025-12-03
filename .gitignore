@@ -1,28 +1,13 @@
-# Node / Capacitor
-node_modules/
-npm-debug.log*
-*.log
-
-# OS junk
-.DS_Store
-Thumbs.db
-
-# Android build outputs
-android/.gradle/
-android/app/.gradle/
-android/build/
-android/app/build/
+_zip_working/
+.trae_tmp_TraeDocx/
+images/.idea/
 android/.idea/
-android/app/.idea/
+android/app/build/
+android/build/
+android/.gradle/
 android/local.properties
-android/app/local.properties
 *.iml
-
-# Cordova/Capacitor plugin build outputs
-android/capacitor-cordova-android-plugins/build/
-
-# VSCode settings (optional)
-.vscode/
-
-# Trae/IDE temp
-.trae/
+*.log
+dist/
+build/
+node_modules/
