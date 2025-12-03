@@ -870,12 +870,14 @@ window.googleLogin = async function () {
         displayMessage('Signed in with Google (Native)');
         return;
       }
-      displayMessage('Google sign-in not available on device', 'error', 6000);
+      const provider = new window.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await window.signInWithRedirect(a, provider);
       return;
     }
     const provider = new window.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await window.signInWithPopup(a, provider);
+    await window.signInWithRedirect(a, provider);
   } catch (e) {
     console.error('Google Login Error:', e);
     displayMessage('Login failed: ' + (e.message || JSON.stringify(e)), 'error', 6000);
