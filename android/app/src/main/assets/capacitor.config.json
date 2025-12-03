@@ -4,6 +4,7 @@
 	"webDir": "www",
 	"plugins": {
 		"GoogleLogin": {
+			"clientId": "1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com",
 			"android": {
 				"clientId": "1083294283084-n5775c6fmvq1i0rbkk2knjcgvvqj4a1o.apps.googleusercontent.com"
 			}

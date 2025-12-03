@@ -16,6 +16,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInWithCredential,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getFirestore,
@@ -50,6 +51,8 @@ window.signInWithPopup = signInWithPopup;
 window.signInWithRedirect = signInWithRedirect;
 window.getRedirectResult = getRedirectResult;
 window.signInWithCredential = signInWithCredential;
+window.sendPasswordResetEmail = sendPasswordResetEmail;
+
 window.getFirestore = getFirestore;
 window.doc = doc;
 window.setDoc = setDoc;
@@ -248,15 +251,26 @@ function toggleSettingsMenu() {
   if (ccInput) ccInput.value = getDefaultCountryCode();
   const lang = getLanguage();
   if (langSel) langSel.value = lang;
+  const removeHandler = () => {
+    const h = window.__settingsMenuHandler;
+    if (h) {
+      document.removeEventListener('click', h);
+      window.__settingsMenuHandler = null;
+    }
+  };
+  removeHandler();
   menu.classList.toggle('hidden');
   if (!menu.classList.contains('hidden')) {
     const handler = (e) => {
       if (!menu.contains(e.target)) {
         menu.classList.add('hidden');
-        document.removeEventListener('click', handler);
+        removeHandler();
       }
     };
+    window.__settingsMenuHandler = handler;
     setTimeout(() => document.addEventListener('click', handler), 0);
+  } else {
+    removeHandler();
   }
 }
 window.toggleSettingsMenu = toggleSettingsMenu;
@@ -278,6 +292,11 @@ function saveSettingsMenu() {
   }
   const menu = document.getElementById('settings-menu');
   if (menu) menu.classList.add('hidden');
+  const h = window.__settingsMenuHandler;
+  if (h) {
+    document.removeEventListener('click', h);
+    window.__settingsMenuHandler = null;
+  }
   displayMessage('Settings saved');
 }
 window.saveSettingsMenu = saveSettingsMenu;
@@ -358,7 +377,7 @@ function parseDurationToMinutes(input) {
 const SERVICE_COLORS = {
   indigo: {
     bg: "bg-indigo-50",
-    border: "border-indigo-100",
+    border: "border-indigo-500",
     text: "text-indigo-600",
     badgeBg: "bg-indigo-100",
     badgeText: "text-indigo-700",
@@ -366,7 +385,7 @@ const SERVICE_COLORS = {
   },
   rose: {
     bg: "bg-rose-50",
-    border: "border-rose-100",
+    border: "border-rose-500",
     text: "text-rose-600",
     badgeBg: "bg-rose-100",
     badgeText: "text-rose-700",
@@ -374,7 +393,7 @@ const SERVICE_COLORS = {
   },
   emerald: {
     bg: "bg-emerald-50",
-    border: "border-emerald-100",
+    border: "border-emerald-500",
     text: "text-emerald-600",
     badgeBg: "bg-emerald-100",
     badgeText: "text-emerald-700",
@@ -382,7 +401,7 @@ const SERVICE_COLORS = {
   },
   amber: {
     bg: "bg-amber-50",
-    border: "border-amber-100",
+    border: "border-amber-500",
     text: "text-amber-600",
     badgeBg: "bg-amber-100",
     badgeText: "text-amber-700",
@@ -390,7 +409,7 @@ const SERVICE_COLORS = {
   },
   sky: {
     bg: "bg-sky-50",
-    border: "border-sky-100",
+    border: "border-sky-500",
     text: "text-sky-600",
     badgeBg: "bg-sky-100",
     badgeText: "text-sky-700",
@@ -398,7 +417,7 @@ const SERVICE_COLORS = {
   },
   violet: {
     bg: "bg-violet-50",
-    border: "border-violet-100",
+    border: "border-violet-500",
     text: "text-violet-600",
     badgeBg: "bg-violet-100",
     badgeText: "text-violet-700",
@@ -406,7 +425,7 @@ const SERVICE_COLORS = {
   },
   cyan: {
     bg: "bg-cyan-50",
-    border: "border-cyan-100",
+    border: "border-cyan-500",
     text: "text-cyan-600",
     badgeBg: "bg-cyan-100",
     badgeText: "text-cyan-700",
@@ -414,7 +433,7 @@ const SERVICE_COLORS = {
   },
   pink: {
     bg: "bg-pink-50",
-    border: "border-pink-100",
+    border: "border-pink-500",
     text: "text-pink-600",
     badgeBg: "bg-pink-100",
     badgeText: "text-pink-700",
@@ -422,7 +441,7 @@ const SERVICE_COLORS = {
   },
   red: {
     bg: "bg-red-50",
-    border: "border-red-100",
+    border: "border-red-500",
     text: "text-red-600",
     badgeBg: "bg-red-100",
     badgeText: "text-red-700",
@@ -430,7 +449,7 @@ const SERVICE_COLORS = {
   },
   orange: {
     bg: "bg-orange-50",
-    border: "border-orange-100",
+    border: "border-orange-500",
     text: "text-orange-600",
     badgeBg: "bg-orange-100",
     badgeText: "text-orange-700",
@@ -438,7 +457,7 @@ const SERVICE_COLORS = {
   },
   lime: {
     bg: "bg-lime-50",
-    border: "border-lime-100",
+    border: "border-lime-500",
     text: "text-lime-600",
     badgeBg: "bg-lime-100",
     badgeText: "text-lime-700",
@@ -446,7 +465,7 @@ const SERVICE_COLORS = {
   },
   teal: {
     bg: "bg-teal-50",
-    border: "border-teal-100",
+    border: "border-teal-500",
     text: "text-teal-600",
     badgeBg: "bg-teal-100",
     badgeText: "text-teal-700",
@@ -454,7 +473,7 @@ const SERVICE_COLORS = {
   },
   blue: {
     bg: "bg-blue-50",
-    border: "border-blue-100",
+    border: "border-blue-500",
     text: "text-blue-600",
     badgeBg: "bg-blue-100",
     badgeText: "text-blue-700",
@@ -462,7 +481,7 @@ const SERVICE_COLORS = {
   },
   purple: {
     bg: "bg-purple-50",
-    border: "border-purple-100",
+    border: "border-purple-500",
     text: "text-purple-600",
     badgeBg: "bg-purple-100",
     badgeText: "text-purple-700",
@@ -493,57 +512,83 @@ function minutesToTime(mins) {
   return `${H}:${M}`;
 }
 
+function calculateEndTime(startTime, duration) {
+  return minutesToTime(timeToMinutes(startTime) + (Number(duration) || 0));
+}
+
 function renderHourlySchedule(dayKey, title) {
   const appts = window.state.appointments.filter((a) => a.date === dayKey);
-  const rows = [];
+  const normalized = appts
+    .map((a) => {
+      const s = timeToMinutes(a.time || "00:00");
+      const e = s + (Number(a.duration) || 0);
+      return { id: a.id, clientName: a.clientName, phone: a.phone || "", s, e };
+    })
+    .sort((x, y) => (x.s - y.s) || String(x.clientName || '').localeCompare(String(y.clientName || '')));
+  const groups = [];
+  for (let i = 0; i < normalized.length; i++) {
+    const n = normalized[i];
+    const prev = groups[groups.length - 1];
+    if (prev && n.clientName === prev.clientName && n.s <= prev.e) {
+      prev.e = Math.max(prev.e, n.e);
+      prev.ids.push(n.id);
+    } else {
+      groups.push({ clientName: n.clientName, phone: n.phone, s: n.s, e: n.e, ids: [n.id] });
+    }
+  }
   const startHour = 6;
   const endHour = 21;
-  for (let h = startHour; h <= endHour; h++) {
-    const slotStart = h * 60;
-    const slotEnd = (h + 1) * 60;
-    const inHour = appts
-      .map((a) => {
-        const s = timeToMinutes(a.time || "00:00");
-        const e = s + (Number(a.duration) || 0);
-        if (e <= slotStart || s >= slotEnd) return null;
-        const from = Math.max(slotStart, s);
-        const to = Math.min(slotEnd, e);
-        const endTimeHM = minutesToTime(e);
-        const endMs = new Date(`${dayKey}T${endTimeHM}`).getTime();
-        const isCompleted = Date.now() >= endMs;
-        return {
-          clientName: a.clientName,
-          start: minutesToTime(from),
-          end: minutesToTime(to),
-          phone: a.phone || "",
-          id: a.id,
-          completed: isCompleted,
-        };
-      })
-      .filter(Boolean);
-    const items =
-      inHour.length === 0
-        ? '<span class="text-gray-400">—</span>'
-        : inHour
-            .map(
-              (x) =>
-                `<div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded px-2 py-1 mt-1">
-                          <span class="text-xs font-medium text-gray-800 truncate" title="${x.clientName} ${x.start}-${x.end}">${x.clientName} (${x.start}-${x.end}) ${x.completed ? '<span class="ml-1 text-red-600 font-semibold">Completed</span>' : ''}</span>
-                          <button onclick="editAppointment('${x.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs"><i class="fas fa-edit"></i></button>
-                        </div>`
-            )
-            .join("");
-    rows.push(
-      `<div class="grid grid-cols-[64px_1fr] gap-2 items-start">
-                <div class="text-xs text-gray-500 font-semibold">${String(h).padStart(2, "0")}:00</div>
-                <div>${items}</div>
-             </div>`
-    );
+  const HOUR_PX = 60;
+  const TOTAL_MIN = (endHour - startHour) * 60;
+  const COLORS = [
+    { bg: "bg-indigo-200", border: "border-indigo-300", text: "text-indigo-900" },
+    { bg: "bg-rose-200", border: "border-rose-300", text: "text-rose-900" },
+    { bg: "bg-emerald-200", border: "border-emerald-300", text: "text-emerald-900" },
+    { bg: "bg-amber-200", border: "border-amber-300", text: "text-amber-900" },
+    { bg: "bg-sky-200", border: "border-sky-300", text: "text-sky-900" },
+    { bg: "bg-purple-200", border: "border-purple-300", text: "text-purple-900" },
+    { bg: "bg-fuchsia-200", border: "border-fuchsia-300", text: "text-fuchsia-900" },
+    { bg: "bg-lime-200", border: "border-lime-300", text: "text-lime-900" },
+  ];
+  function pickColor(id) {
+    const s = String(id || "");
+    let hsh = 0;
+    for (let i = 0; i < s.length; i++) hsh = (hsh * 31 + s.charCodeAt(i)) >>> 0;
+    return COLORS[hsh % COLORS.length];
   }
+
+  let leftCol = "";
+  let rightColStructure = "";
+  for (let h = startHour; h <= endHour; h++) {
+    leftCol += `<div style=\"height:${HOUR_PX}px\" class=\"flex items-start\"><div class=\"text-xs text-gray-500 font-semibold\">${String(h).padStart(2, \"0\")}:00</div></div>`;
+    rightColStructure += `<div style=\"height:${HOUR_PX}px\" class=\"border-t border-gray-200\"></div>`;
+  }
+
+  const blocks = groups
+    .map((g) => {
+      const endTimeHM = minutesToTime(g.e);
+      const endMs = new Date(`${dayKey}T${endTimeHM}`).getTime();
+      const isCompleted = Date.now() >= endMs;
+      const c = pickColor(g.ids[0]);
+      const startOffset = Math.max(0, g.s - startHour * 60);
+      const duration = Math.max(0, g.e - g.s);
+      const topPx = (startOffset / 60) * HOUR_PX;
+      const heightPx = Math.max(22, (duration / 60) * HOUR_PX);
+      const startDisp = minutesToTime(g.s);
+      const endDisp = minutesToTime(g.e);
+      return `<div class=\"absolute left-1 right-8 ${c.bg} border ${c.border} rounded-md shadow-sm flex items-center justify-between px-2\" style=\"top:${topPx}px;height:${heightPx}px\">
+                <span class=\"text-xs font-semibold ${c.text} truncate\" title=\"${g.clientName} ${startDisp}-${endDisp}\">${g.clientName} (${startDisp}-${endDisp}) ${isCompleted ? '<span class=\\\"ml-1 text-red-600 font-semibold\\\">Completed</span>' : ''}</span>
+                <button onclick=\"editAppointment('${g.ids[0]}')\" class=\"text-indigo-700 hover:text-indigo-900 text-xs\"><i class=\"fas fa-edit\"></i></button>
+              </div>`;
+    })
+    .join("");
+
+  const timeline = `<div class=\"relative\">${rightColStructure}${blocks}</div>`;
+
   return `
-          <div class="bg-white rounded-xl shadow border border-gray-100 p-3 mb-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">${title}</h3>
-            <div class="space-y-1">${rows.join("")}</div>
+          <div class=\"bg-yellow-100 rounded-xl shadow border border-yellow-300 p-3 mb-4\" data-schedule-version=\"v2\">
+            <h3 class=\"text-lg font-semibold text-gray-800 mb-2\">${title}</h3>
+            <div class=\"grid grid-cols-[64px_1fr] gap-2\">${leftCol}${timeline}</div>
           </div>
         `;
 }
@@ -621,6 +666,18 @@ function showConfirmModal(title, message, options = {}) {
 window.showConfirmModal = showConfirmModal;
 
 async function pickContact() {
+  if (window._contactPickerBusy) {
+    displayMessage("Contact picker is already open.");
+    return;
+  }
+  window._contactPickerBusy = true;
+  let __pcFinished = false;
+  const __pcTimer = setTimeout(() => {
+    if (!__pcFinished) {
+      displayMessage("Contacts picker timed out. Please try again or enter the details manually.", "error", 5000);
+      window._contactPickerBusy = false;
+    }
+  }, 10000);
   try {
     const cap = window.Capacitor;
     const plugin = cap && cap.Plugins ? (cap.Plugins.Contacts || cap.Plugins.ContactsPlugin) : (window.Contacts || null);
@@ -651,8 +708,10 @@ async function pickContact() {
           if (tel) form.phone.value = tel;
           displayMessage("Contact details added.");
         }
+        __pcFinished = true; clearTimeout(__pcTimer);
       } else {
         displayMessage("No contact selected or plugin unavailable.");
+        __pcFinished = true; clearTimeout(__pcTimer);
       }
     } else if (navigator.contacts && navigator.contacts.select) {
       const contacts = await navigator.contacts.select(["name", "tel"], {
@@ -671,14 +730,20 @@ async function pickContact() {
           if (name) form.clientName.value = name;
           if (tel) form.phone.value = tel;
         }
+        __pcFinished = true; clearTimeout(__pcTimer);
       } else {
         openContactsModal();
+        __pcFinished = true; clearTimeout(__pcTimer);
       }
     } else {
       openContactsModal();
+      __pcFinished = true; clearTimeout(__pcTimer);
     }
   } catch (e) {
     displayMessage("Unable to access contacts: " + e.message, "error", 4000);
+  } finally {
+    if (!__pcFinished) { __pcFinished = true; clearTimeout(__pcTimer); }
+    window._contactPickerBusy = false;
   }
 }
 window.pickContact = pickContact;
@@ -720,8 +785,10 @@ window.handleAuth = async function () {
   const errorMsg = document.getElementById("login-error");
   const email = emailEl ? emailEl.value : "";
   const password = passwordEl ? passwordEl.value : "";
+  const emailTrim = String(email || '').trim();
+  const passwordTrim = String(password || '');
   if (errorMsg) errorMsg.classList.add("hidden");
-  if (!email || !password) {
+  if (!emailTrim || !passwordTrim) {
     if (errorMsg) {
       errorMsg.textContent = "Please enter both email and password.";
       errorMsg.classList.remove("hidden");
@@ -737,10 +804,15 @@ window.handleAuth = async function () {
     return;
   }
   try {
+    const overlay = document.getElementById("login-overlay");
     if (window.authMode === "login") {
-      await window.signInWithEmailAndPassword(a, email, password);
+      await window.signInWithEmailAndPassword(a, emailTrim, passwordTrim);
+      if (overlay) overlay.classList.add("hidden");
+      displayMessage('Signed in', 'success');
     } else {
-      await window.createUserWithEmailAndPassword(a, email, password);
+      await window.createUserWithEmailAndPassword(a, emailTrim, passwordTrim);
+      if (overlay) overlay.classList.add("hidden");
+      displayMessage('Account created and signed in', 'success');
     }
   } catch (error) {
     console.error("Authentication failed:", error);
@@ -818,6 +890,31 @@ window.togglePasswordVisibility = function () {
   if (icon) {
     icon.classList.toggle("fa-eye", !isHidden);
     icon.classList.toggle("fa-eye-slash", isHidden);
+  }
+};
+
+window.resetPassword = async function () {
+  const emailEl = document.getElementById("auth-email");
+  const email = emailEl ? String(emailEl.value || "").trim() : "";
+  const errorMsg = document.getElementById("login-error");
+  if (errorMsg) errorMsg.classList.add("hidden");
+  if (!email) {
+    if (errorMsg) {
+      errorMsg.textContent = "Please enter your email address first.";
+      errorMsg.classList.remove("hidden");
+    }
+    return;
+  }
+  const a = auth || (window.getAuth ? window.getAuth() : null);
+  try {
+    await window.sendPasswordResetEmail(a, email);
+    displayMessage(`Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error(error);
+    if (errorMsg) {
+      errorMsg.textContent = "Error sending reset email: " + (error.message || String(error));
+      errorMsg.classList.remove("hidden");
+    }
   }
 };
 
@@ -914,6 +1011,116 @@ function getAppointmentsRef() {
   }
   return window.collection(db, `artifacts/${appId}/users/${userId}/appointments`);
 }
+
+async function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = String(reader.result || '');
+        const b64 = res.includes(',') ? res.split(',')[1] : res;
+        resolve(b64);
+      };
+      reader.readAsDataURL(blob);
+    } catch {
+      resolve('');
+    }
+  });
+}
+
+window.exportAppointments = async function (startDate, endDate) {
+  const btn = document.getElementById('export-pdf-btn');
+  try {
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); btn.querySelector('span').textContent = 'Generating...'; }
+    if (!window.jspdf) throw new Error('PDF library loading...');
+    const cap = window.Capacitor;
+    const isNative = cap && typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : !!(cap && cap.Plugins);
+    const Filesystem = cap && cap.Plugins ? cap.Plugins.Filesystem : null;
+    const Share = cap && cap.Plugins ? cap.Plugins.Share : null;
+    const Directory = { Cache: 'CACHE' };
+    const nameEl = document.getElementById('export-name');
+    const startEl = document.getElementById('export-start');
+    const endEl = document.getElementById('export-end');
+    const customName = nameEl && nameEl.value ? nameEl.value : '';
+    const startStr = startDate instanceof Date ? startDate.toISOString().split('T')[0] : (startEl ? startEl.value : '');
+    const endStr = endDate instanceof Date ? endDate.toISOString().split('T')[0] : (endEl ? endEl.value : '');
+    const allAppts = Array.isArray(window.state.appointments) ? window.state.appointments : [];
+    const filtered = allAppts.filter((a) => {
+      if (startStr && String(a.date) < startStr) return false;
+      if (endStr && String(a.date) > endStr) return false;
+      return true;
+    });
+    if (!filtered.length) { alert('No appointments found in this date range.'); return; }
+    const sorted = filtered.sort((a, b) => {
+      const d1 = new Date(`${a.date}T${a.time || '00:00'}`);
+      const d2 = new Date(`${b.date}T${b.time || '00:00'}`);
+      return d1 - d2;
+    });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.setTextColor(79, 70, 229);
+    const title = customName ? `Schedule for ${customName}` : 'Appointment Schedule';
+    doc.text(title, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    let rangeText = 'All upcoming & past appointments';
+    if (startStr || endStr) rangeText = `Range: ${startStr || 'Start'} to ${endStr || 'End'}`;
+    doc.text(rangeText, 14, 28);
+    function formatTimeRange(start, durationStr) {
+      if (!start) return '';
+      const duration = Number(durationStr) || 0;
+      const [h, m] = String(start).split(':').map(Number);
+      const totalMins = (h || 0) * 60 + (m || 0) + duration;
+      const endH = Math.floor(totalMins / 60) % 24;
+      const endM = totalMins % 60;
+      return `${start} - ${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    }
+    const tableRows = sorted.map((appt) => {
+      const d = new Date(appt.date);
+      const dateDisplay = isNaN(d) ? String(appt.date || '') : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const serviceList = Array.isArray(appt.serviceDetails) ? appt.serviceDetails.map((s) => s && s.name).filter(Boolean).join(', ') : '';
+      const timeDisplay = formatTimeRange(appt.time, appt.duration);
+      return [dateDisplay, timeDisplay, String(appt.clientName || ''), String(appt.phone || ''), serviceList, String(appt.notes || '')];
+    });
+    doc.autoTable({ startY: 35, head: [['Date', 'Time', 'Client', 'Phone', 'Service', 'Notes']], body: tableRows, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, styles: { fontSize: 9, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 25 }, 2: { cellWidth: 30 }, 5: { cellWidth: 35 } } });
+    const filename = `Schedule_${startStr || 'All'}_to_${endStr || 'All'}.pdf`;
+    const blob = doc.output('blob');
+    if (isNative && Filesystem && Share) {
+      const base64 = await blobToBase64(blob);
+      const { uri } = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache })
+        .then(() => Filesystem.getUri({ path: filename, directory: Directory.Cache }));
+      await Share.share({ title: 'Appointment Report', url: uri, dialogTitle: 'Share PDF' });
+      setTimeout(() => { Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {}); }, 60000);
+      return;
+    }
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Appointment Schedule', text: 'Here is the exported schedule PDF.' });
+      return;
+    }
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+      return;
+    } catch {
+      try {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
+        return;
+      } catch {}
+    }
+    doc.save(filename);
+  } catch (error) {
+    alert('Export failed—check permissions');
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); btn.querySelector('span').textContent = 'Share or Download PDF'; }
+  }
+};
+
+window.downloadPDF = async function () { return window.exportAppointments(); };
 
 function listenForAppointments() {
   const appointmentsRef = getAppointmentsRef();
@@ -1577,6 +1784,32 @@ function selectDate(day) {
 }
 window.selectDate = selectDate;
 
+function changeDate(delta) {
+  changeSelectedDate(delta);
+}
+window.changeDate = changeDate;
+
+async function toggleComplete(id) {
+  const appt = (window.state.appointments || []).find((a) => a.id === id);
+  if (!appt) return;
+  const next = !appt.completed;
+  appt.completed = next;
+  const appointmentsRef = getAppointmentsRef();
+  if (!appointmentsRef) {
+    renderCalendarView();
+    renderUpcomingView();
+    return;
+  }
+  try {
+    await window.updateDoc(window.doc(appointmentsRef, id), { completed: next });
+  } catch (e) {
+    queuePendingAppointment('update', { completed: next }, id);
+  }
+  renderCalendarView();
+  renderUpcomingView();
+}
+window.toggleComplete = toggleComplete;
+
 function setCalendarMode(mode) {
   window.state.calendarMode = mode;
   if (mode === "month") {
@@ -1618,6 +1851,8 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
       const startMs = new Date(`${dayKey}T${appt.time || "00:00"}`).getTime();
       const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
       const isCompleted = Date.now() >= endMs;
+      const startTimeDisplay = appt.time || "00:00";
+      const endTimeDisplay = minutesToTime(timeToMinutes(startTimeDisplay) + (Number(appt.duration) || 30));
       const completedNoteHTML = isCompleted ? `<p class=\"text-xs font-semibold text-red-600 mt-1\"><i class=\"fas fa-circle-check w-3 text-center\"></i> Appointment Completed</p>` : "";
 
       listHTML += `
@@ -1626,7 +1861,7 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
                                       <p class="text-xs font-semibold uppercase text-indigo-500">${serviceDisplay}</p>
                                       <h4 class="text-base font-bold text-gray-900">${appt.clientName}</h4>
                                       <div class="text-xs text-gray-600 mt-1">
-                                          <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min)</span></p>
+                                          <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${startTimeDisplay} - ${endTimeDisplay}</span></p>
                                           ${phone ? `<p class=\"mt-1\"><i class=\"fas fa-phone w-3 text-center text-indigo-400\"></i> <span class=\"ml-1\">${phone}</span></p>` : ""}
                                           ${appt.notes && !isCompact ? `<p class="mt-1 text-xs italic text-gray-500"><i class="fas fa-sticky-note w-3 text-center"></i> ${appt.notes}</p>` : ""}
                                       </div>
@@ -1668,7 +1903,7 @@ function renderCalendarView() {
     let content = "";
     switch (mode) {
       case "day":
-        content = renderDayView();
+        content = renderDayTimelineView();
         break;
       case "week":
         content = renderWeekView();
@@ -1685,28 +1920,74 @@ function renderCalendarView() {
       modeSelectorHTML +
       `<div class="p-4 text-center text-red-600">Unable to render calendar view.</div>`;
   }
+  
 }
 
-function renderDayView() {
+function renderDayTimelineView() {
   const selectedDate = window.state.selectedDate;
-  const dayKey = formatDate(selectedDate);
-  const selectedDateDisplay = selectedDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+  const dayStr = formatDate(selectedDate);
+  const dayAppts = window.state.appointments
+    .filter(a => a.date === dayStr)
+    .sort((a,b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+    .map(appt => ({
+      ...appt,
+      startMin: timeToMinutes(appt.time),
+      endMin: timeToMinutes(appt.time) + (appt.duration || 0),
+    }));
+
+  const columns = [];
+  dayAppts.forEach(appt => {
+    let placed = false;
+    for (const col of columns) {
+      const last = col[col.length - 1];
+      if (appt.startMin >= last.endMin) {
+        col.push(appt);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) columns.push([appt]);
   });
+  const maxCols = columns.length;
+  const START_HOUR = 6;
+  const END_HOUR = 21;
+  const HOUR_PX = 64;
 
-  const navHTML = `
-                    <div class="mb-4 flex justify-between items-center px-2">
-                        <button onclick="changeSelectedDate(-1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-left"></i></button>
-                        <h2 class="text-xl font-semibold text-gray-800 text-center">${selectedDateDisplay}</h2>
-                        <button onclick="changeSelectedDate(1)" class="p-2 text-indigo-600 hover:bg-indigo-100 rounded-full transition"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                `;
+  let html = `
+    <div class="mb-4 flex justify-between items-center">
+      <button onclick="changeDate(-1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left text-indigo-600"></i></button>
+      <h2 class="text-xl font-bold text-gray-800 dark:text-slate-100">${daysOfWeek[selectedDate.getDay()]}, ${months[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}</h2>
+      <button onclick="changeDate(1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right text-indigo-600"></i></button>
+    </div>
 
-  const hourlyHTML = renderHourlySchedule(dayKey, "Schedule");
-  return navHTML + hourlyHTML + generateDayAppointmentListHTML(dayKey, "Appointments", false);
+    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg overflow-hidden">
+      <div class="flex">
+        <div class="w-20 flex-shrink-0 bg-gray-50 dark:bg-slate-800">
+          ${Array.from({length: END_HOUR - START_HOUR + 1}, (_,i) => {
+            const h = START_HOUR + i;
+            return `<div style=\"height:${HOUR_PX}px\" class=\"flex items-center justify-end pr-3 text-sm font-medium text-gray-600 dark:text-slate-300 border-b border-gray-200\">${String(h).padStart(2,'0')}:00</div>`;
+          }).join('')}
+        </div>
+        <div class="flex-1 relative bg-gray-50 dark:bg-slate-800" style="height:${(END_HOUR - START_HOUR + 1) * HOUR_PX}px">
+          ${Array.from({length: END_HOUR - START_HOUR + 1}, (_,i) => `<div class=\"absolute left-0 right-0 border-b border-gray-300 dark:border-slate-700\" style=\"top:${i * HOUR_PX}px\"></div>`).join('')}
+          ${dayAppts.map(appt => {
+            const colIndex = columns.findIndex(col => col.includes(appt));
+            const widthPct = 100 / maxCols;
+            const leftPct = colIndex * widthPct;
+            const topPx = ((appt.startMin - START_HOUR*60) / 60) * HOUR_PX;
+            const heightPx = (appt.duration / 60) * HOUR_PX;
+            const endTime = calculateEndTime(appt.time, appt.duration);
+            const service = window.state.services.find(s => s.name === appt.service) || {color:'indigo'};
+            const c = SERVICE_COLORS[service.color || 'indigo'];
+            const done = appt.completed ? 'text-green-600' : 'text-gray-400';
+            return `
+              <div class=\"absolute p-3 rounded-xl ${c.bg} ${c.text} dark:bg-slate-800 dark:text-slate-100 border-4 ${c.border} flex flex-col justify-between shadow-xl ring-2 ring-gray-400 dark:ring-slate-700\" style=\"top:${topPx}px; height:${heightPx}px; left:${leftPct}%; width:${widthPct}%\">\n                <div class=\"flex justify-between items-start\">\n                  <div>\n                    <div class=\"font-bold\">${appt.clientName}</div>\n                    ${appt.service ? `<div class=\\\"text-xs opacity-80\\\">${appt.service}</div>` : ''}\n                  </div>\n                  <button onclick=\"toggleComplete('${appt.id}')\"><i class=\"fas fa-check-circle ${done} text-xl\"></i></button>\n                </div>\n                <div class=\"text-sm opacity-90\">${appt.time} – ${endTime}</div>\n              </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  return html;
 }
 
 function renderWeekView() {
@@ -1915,6 +2196,8 @@ function renderUpcomingView() {
       const startMs = new Date(`${appt.date}T${appt.time || "00:00"}`).getTime();
       const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
       const isCompleted = Date.now() >= endMs;
+      const startTimeDisplay = appt.time || "00:00";
+      const endTimeDisplay = minutesToTime(timeToMinutes(startTimeDisplay) + (Number(appt.duration) || 30));
       const completedHTML = isCompleted ? `<p class="mt-1 text-xs font-semibold text-emerald-600"><i class="fas fa-check-circle w-4 text-center"></i> Appointment Completed</p>` : "";
       const serviceBadgesHTML = Array.isArray(appt.serviceDetails) && appt.serviceDetails.length
         ? appt.serviceDetails
@@ -1932,7 +2215,7 @@ function renderUpcomingView() {
                                 <h4 class="text-lg font-bold text-gray-900">${appt.clientName}</h4>
                                 <div class="text-sm text-gray-600 mt-1 space-y-0.5">
                                     <p><i class="fas fa-calendar-day w-4 text-center text-indigo-500"></i> <span class="ml-1 font-bold text-indigo-700">${dateDisplay}</span></p>
-                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min • ${formatHM(appt.duration || 30)})</span></p>
+                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${startTimeDisplay} - ${endTimeDisplay}</span></p>
                                     ${completedHTML}
                                     ${phone ? `<p><i class="fas fa-phone w-4 text-center text-indigo-400"></i> <span class="ml-1">${phone}</span></p>` : ""}
                                 </div>
@@ -2313,3 +2596,6 @@ setInterval(() => {
     renderUpcomingView();
   }
 }, 30000);
+// shareOrDownloadPDF now delegates to the Capacitor-backed downloadPDF
+window.shareOrDownloadPDF = async function () { return window.downloadPDF(); };
+if (!window.__appInitCalled) { window.__appInitCalled = true; try { initApp(); } catch (_) {} }

@@ -17,6 +17,8 @@
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
+    "@capacitor/filesystem": "^7.1.5",
+    "@capacitor/share": "^7.0.2",
     "@ebarooni/capacitor-calendar": "^7.2.0",
     "@team-lepisode/capacitor-google-login": "^7.0.0"
   }

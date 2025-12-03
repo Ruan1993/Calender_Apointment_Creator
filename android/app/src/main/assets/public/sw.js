@@ -1,8 +1,8 @@
-const CACHE_NAME = "appointment-app-v5";
+const CACHE_NAME = "appointment-app-v6";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js",
+  "./app.js?v=dayview-v2",
   "./styles.css",
   "./tailwind.css",
   "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",

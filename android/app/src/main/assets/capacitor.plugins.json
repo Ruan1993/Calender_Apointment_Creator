@@ -4,6 +4,14 @@
 		"classpath": "getcapacitor.community.contacts.ContactsPlugin"
 	},
 	{
+		"pkg": "@capacitor/filesystem",
+		"classpath": "com.capacitorjs.plugins.filesystem.FilesystemPlugin"
+	},
+	{
+		"pkg": "@capacitor/share",
+		"classpath": "com.capacitorjs.plugins.share.SharePlugin"
+	},
+	{
 		"pkg": "@ebarooni/capacitor-calendar",
 		"classpath": "dev.barooni.capacitor.calendar.CapacitorCalendarPlugin"
 	},
