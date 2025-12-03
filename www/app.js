@@ -90,7 +90,7 @@ let userId = "unknown";
 window.state = {
   currentMonth: new Date(),
   selectedDate: new Date(),
-  calendarMode: "month",
+  calendarMode: "day",
   appointments: [],
   services: [],
   contacts: [],
@@ -558,6 +558,19 @@ function renderHourlySchedule(dayKey, title) {
     return COLORS[hsh % COLORS.length];
   }
 
+  function isCompleted(endMin) {
+    const now = new Date();
+    const parts = String(dayKey).split("-").map((x) => parseInt(x, 10));
+    const sel = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1);
+    sel.setHours(0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    today.setHours(0, 0, 0, 0);
+    if (sel.getTime() < today.getTime()) return true;
+    if (sel.getTime() > today.getTime()) return false;
+    const endDate = new Date(parts[0], (parts[1] || 1) - 1, parts[2] || 1, Math.floor(endMin / 60), endMin % 60, 0, 0);
+    return now.getTime() >= endDate.getTime();
+  }
+
   let leftCol = "";
   for (let h = startHour; h <= endHour; h++) {
     leftCol += `<div style="height:${HOUR_PX}px" class="flex items-start"><div class="text-xs text-gray-500 font-semibold">${String(h).padStart(2, "0")}:00</div></div>`;
@@ -565,7 +578,7 @@ function renderHourlySchedule(dayKey, title) {
 
   let rightColStructure = "";
   for (let h = startHour; h <= endHour; h++) {
-    rightColStructure += `<div style="height:${HOUR_PX}px" class="border-t border-gray-200"></div>`;
+    rightColStructure += `<div style="height:${HOUR_PX}px"></div>`;
   }
 
   const blocks = groups
@@ -577,14 +590,16 @@ function renderHourlySchedule(dayKey, title) {
       const heightPx = Math.max(24, (duration / 60) * HOUR_PX);
       const startDisp = minutesToTime(g.s);
       const endDisp = minutesToTime(g.e);
-      return `<div class="absolute left-1 right-2 ${c.bg} ${c.border} border-2 rounded-md shadow-md flex items-center justify-between px-2" style="top:${topPx}px;height:${heightPx}px">
+      const completed = isCompleted(g.e);
+      const badge = completed ? `<div class="absolute left-2 bottom-1 text-xs font-semibold text-red-600 bg-white rounded px-2 py-[2px] shadow-sm flex items-center gap-1"><i class="fas fa-circle-check text-red-600"></i><span>Appointment Completed</span></div>` : "";
+      return `<div class="absolute left-1 right-2 ${c.bg} ${c.border} border-2 box-border rounded-md shadow-md flex items-center justify-between px-2" style="top:${topPx}px;height:${heightPx}px">
                 <span class="text-xs font-semibold ${c.text} truncate" title="${g.clientName} ${startDisp}-${endDisp}">${g.clientName} (${startDisp}-${endDisp})</span>
                 <button onclick="editAppointment('${g.ids[0]}')" class="text-indigo-700 hover:text-indigo-900 text-xs"><i class="fas fa-edit"></i></button>
-              </div>`;
+              ${badge}</div>`;
     })
     .join("");
 
-  const timeline = `<div class="relative">${rightColStructure}${blocks}</div>`;
+  const timeline = `<div class="relative" style="background-image:repeating-linear-gradient(to bottom, rgba(229,231,235,1) 0px, rgba(229,231,235,1) 1px, transparent 1px, transparent ${HOUR_PX}px)">${rightColStructure}${blocks}</div>`;
 
   return `
     <div class="bg-yellow-100 rounded-xl shadow border border-yellow-300 p-3 mb-4" data-schedule-version="v2">
@@ -877,7 +892,14 @@ window.googleLogin = async function () {
     }
     const provider = new window.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await window.signInWithRedirect(a, provider);
+    try {
+      await window.signInWithPopup(a, provider);
+      const overlay = document.getElementById('login-overlay');
+      if (overlay) overlay.classList.add('hidden');
+      displayMessage('Signed in with Google');
+    } catch (err) {
+      await window.signInWithRedirect(a, provider);
+    }
   } catch (e) {
     console.error('Google Login Error:', e);
     displayMessage('Login failed: ' + (e.message || JSON.stringify(e)), 'error', 6000);
@@ -951,7 +973,7 @@ async function initApp() {
       console.warn("Persistence failed, continuing without it:", e);
     });
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       const overlay = document.getElementById("login-overlay");
       if (user) {
         userId = user.uid;
@@ -979,13 +1001,24 @@ async function initApp() {
         window.state.services = [];
         window.state.contacts = [];
         if (overlay) overlay.classList.remove("hidden");
+        bindAuthEvents();
         const box = document.getElementById("message-box");
         if (box) box.classList.add("hidden");
         const appContent = document.getElementById("app-content");
         if (appContent) appContent.innerHTML = appContent.innerHTML; // noop to maintain structure
         if (!window.__anonAttempted) {
           window.__anonAttempted = true;
-          try { window.signInAnonymously(auth); } catch (_) {}
+          const cap = window.Capacitor;
+          const isNative = cap && typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : !!(cap && cap.Plugins);
+          if (isNative) {
+            try {
+              await window.signInAnonymously(auth);
+            } catch (error) {
+              showLoginOverlay();
+            }
+          } else {
+            showLoginOverlay();
+          }
         }
       }
       showLoading(false);
@@ -1893,9 +1926,10 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
 
 function renderCalendarView() {
   const container = document.getElementById("calendar-view");
-  if (container.classList.contains("hidden")) return;
-
   const mode = window.state.calendarMode;
+  const dv = document.getElementById('day-view');
+  if (dv) dv.classList.add('hidden');
+  if (container) container.classList.remove('hidden');
 
   const modeSelectorHTML = `
                   <div class="flex justify-center space-x-2 mb-4 bg-gray-100 p-1 rounded-xl shadow-inner border border-gray-200">
@@ -1933,70 +1967,89 @@ function renderCalendarView() {
 function renderDayTimelineView() {
   const selectedDate = window.state.selectedDate;
   const dayStr = formatDate(selectedDate);
-  const dayAppts = window.state.appointments
+  const dayAppts = (window.state.appointments || [])
     .filter(a => a.date === dayStr)
     .sort((a,b) => timeToMinutes(a.time) - timeToMinutes(b.time))
     .map(appt => ({
       ...appt,
       startMin: timeToMinutes(appt.time),
-      endMin: timeToMinutes(appt.time) + (appt.duration || 0),
+      endMin: timeToMinutes(appt.time) + (Number(appt.duration) || 0),
     }));
 
-  const columns = [];
-  dayAppts.forEach(appt => {
-    let placed = false;
-    for (const col of columns) {
-      const last = col[col.length - 1];
-      if (appt.startMin >= last.endMin) {
-        col.push(appt);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) columns.push([appt]);
-  });
-  const maxCols = columns.length;
   const START_HOUR = 6;
   const END_HOUR = 21;
-  const HOUR_PX = 64;
+  const HOUR_PX = 72;
+  const COLORS = [
+    { bg: "bg-red-50", border: "border-red-300", title: "text-red-700" },
+    { bg: "bg-orange-50", border: "border-orange-300", title: "text-orange-700" },
+    { bg: "bg-amber-50", border: "border-amber-300", title: "text-amber-700" },
+    { bg: "bg-lime-50", border: "border-lime-300", title: "text-lime-700" },
+    { bg: "bg-emerald-50", border: "border-emerald-300", title: "text-emerald-700" },
+    { bg: "bg-cyan-50", border: "border-cyan-300", title: "text-cyan-700" },
+    { bg: "bg-sky-50", border: "border-sky-300", title: "text-sky-700" },
+    { bg: "bg-indigo-50", border: "border-indigo-300", title: "text-indigo-700" },
+    { bg: "bg-violet-50", border: "border-violet-300", title: "text-violet-700" },
+    { bg: "bg-pink-50", border: "border-pink-300", title: "text-pink-700" },
+  ];
+  function pickColor(seed) {
+    const s = String(seed || "");
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return COLORS[h % COLORS.length];
+  }
+  // assign colors ensuring no consecutive duplicate
+  let prevIndex = -1;
+  const apptColors = dayAppts.map(appt => {
+    const s = String(appt.id || appt.clientName || "");
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    let idx = h % COLORS.length;
+    if (idx === prevIndex) idx = (idx + 1) % COLORS.length;
+    prevIndex = idx;
+    return COLORS[idx];
+  });
 
   let html = `
     <div class="mb-4 flex justify-between items-center">
-      <button onclick="changeDate(-1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left text-indigo-600"></i></button>
-      <h2 class="text-xl font-bold text-gray-800 dark:text-slate-100">${daysOfWeek[selectedDate.getDay()]}, ${months[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}</h2>
-      <button onclick="changeDate(1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right text-indigo-600"></i></button>
+      <button onclick="changeDate(-1)" class="p-2 rounded-full hover:bg-indigo-50"><i class="fas fa-chevron-left text-indigo-600"></i></button>
+      <h2 class="text-xl font-bold text-gray-800">${daysOfWeek[selectedDate.getDay()]}, ${months[selectedDate.getMonth()]} ${selectedDate.getDate()}, ${selectedDate.getFullYear()}</h2>
+      <button onclick="changeDate(1)" class="p-2 rounded-full hover:bg-indigo-50"><i class="fas fa-chevron-right text-indigo-600"></i></button>
     </div>
 
-    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg overflow-hidden">
+    <div class="rounded-2xl bg-gradient-to-b from-indigo-50 to-white border border-indigo-100 shadow-2xl overflow-hidden">
       <div class="flex">
-        <div class="w-20 flex-shrink-0 bg-gray-50 dark:bg-slate-800">
+        <div class="w-20 flex-shrink-0 bg-transparent">
           ${Array.from({length: END_HOUR - START_HOUR + 1}, (_,i) => {
             const h = START_HOUR + i;
-            return `<div style="height:${HOUR_PX}px" class="flex items-center justify-end pr-3 text-sm font-medium text-gray-600 dark:text-slate-300 border-b border-gray-200">${String(h).padStart(2,'0')}:00</div>`;
+            return `<div style="height:${HOUR_PX}px" class="flex items-start justify-end pr-3 text-sm font-medium text-gray-500"><span class="pt-[2px]">${String(h).padStart(2,'0')}:00</span></div>`;
           }).join('')}
         </div>
-        <div class="flex-1 relative bg-gray-50 dark:bg-slate-800" style="height:${(END_HOUR - START_HOUR + 1) * HOUR_PX}px">
-          ${Array.from({length: END_HOUR - START_HOUR + 1}, (_,i) => `<div class="absolute left-0 right-0 border-b border-gray-300 dark:border-slate-700" style="top:${i * HOUR_PX}px"></div>`).join('')}
-          ${dayAppts.map(appt => {
-            const colIndex = columns.findIndex(col => col.includes(appt));
-            const widthPct = 100 / maxCols;
-            const leftPct = colIndex * widthPct;
+        <div class="flex-1 relative bg-white" style="height:${(END_HOUR - START_HOUR + 1) * HOUR_PX}px">
+          ${Array.from({length: END_HOUR - START_HOUR + 1}, (_,i) => `<div class="absolute left-0 right-0 border-t border-indigo-100" style="top:${i * HOUR_PX}px"></div>`).join('')}
+          ${dayAppts.map((appt, i) => {
             const topPx = ((appt.startMin - START_HOUR*60) / 60) * HOUR_PX;
-            const heightPx = (appt.duration / 60) * HOUR_PX;
+            const heightPx = Math.max(16, ((Number(appt.duration) || 0) / 60) * HOUR_PX);
             const endTime = calculateEndTime(appt.time, appt.duration);
-            const service = window.state.services.find(s => s.name === appt.service) || {color:'indigo'};
-            const c = SERVICE_COLORS[service.color || 'indigo'];
-            const done = appt.completed ? 'text-green-600' : 'text-gray-400';
+            const service = window.state.services.find(s => s.name === appt.service);
+            const serviceText = service ? service.name : (appt.service || '');
+            const c = apptColors[i];
+            const selDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()); selDay.setHours(0,0,0,0);
+            const today = new Date(); const today0 = new Date(today.getFullYear(), today.getMonth(), today.getDate()); today0.setHours(0,0,0,0);
+            const endMin = appt.startMin + (Number(appt.duration) || 0);
+            const endDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), Math.floor(endMin/60), endMin%60, 0, 0);
+            const isCompleted = selDay.getTime() < today0.getTime() ? true : (selDay.getTime() > today0.getTime() ? false : (today.getTime() >= endDate.getTime()));
+            const badge = isCompleted ? `<div class="absolute left-4 bottom-1 text-xs font-semibold text-red-600 bg-white rounded px-2 py-[2px] shadow-sm flex items-center gap-1"><i class="fas fa-circle-check text-red-600"></i><span>Appointment Completed</span></div>` : '';
             return `
-              <div class="absolute p-3 rounded-xl ${c.bg} ${c.text} dark:bg-slate-800 dark:text-slate-100 border-4 ${c.border} flex flex-col justify-between shadow-xl ring-2 ring-gray-400 dark:ring-slate-700" style="top:${topPx}px; height:${heightPx}px; left:${leftPct}%; width:${widthPct}%">
-                <div class="flex justify-between items-start">
+              <div class="absolute left-6 right-6 ${c.bg} ${c.border} border rounded-2xl shadow-md box-border" style="top:${topPx}px; height:${heightPx}px">
+                <div class="flex justify-between items-start p-4">
                   <div>
-                    <div class="font-bold">${appt.clientName}</div>
-                    ${appt.service ? `<div class="text-xs opacity-80">${appt.service}</div>` : ''}
+                    <div class="font-extrabold ${c.title}">${appt.clientName || ''}</div>
+                    ${serviceText ? `<div class="text-sm ${c.title.replace('700','500')}">${serviceText}${appt.notes ? `, ${appt.notes}` : ''}</div>` : ''}
                   </div>
-                  <button onclick="toggleComplete('${appt.id}')"><i class="fas fa-check-circle ${done} text-xl"></i></button>
+                  <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center"><i class="fas fa-check text-green-600"></i></div>
                 </div>
-                <div class="text-sm opacity-90">${appt.time} – ${endTime}</div>
+                <div class="px-4 pb-6 ${c.title.replace('700','600')} text-sm">${appt.time} – ${endTime}</div>
+                ${badge}
               </div>`;
           }).join('')}
         </div>
@@ -2611,18 +2664,100 @@ function bindAuthEvents() {
   const ov = document.getElementById('login-overlay');
   if (!ov) return;
   const hb = document.getElementById('auth-button');
-  if (hb) hb.addEventListener('click', window.handleAuth);
-  ov.querySelectorAll('[onclick="googleLogin()"]').forEach((el) => el.addEventListener('click', window.googleLogin));
-  ov.querySelectorAll('[onclick="resetPassword()"]').forEach((el) => el.addEventListener('click', window.resetPassword));
-  ov.querySelectorAll('[onclick="togglePasswordVisibility()"]').forEach((el) => el.addEventListener('click', window.togglePasswordVisibility));
-  ov.querySelectorAll('[onclick="toggleAuthMode()"]').forEach((el) => el.addEventListener('click', window.toggleAuthMode));
+  if (hb && !hb.__bound) { hb.__bound = true; hb.onclick = window.handleAuth; hb.addEventListener('touchend', window.handleAuth); }
+  ov.querySelectorAll('[onclick="googleLogin()"]').forEach((el) => { if (!el.__bound) { el.__bound = true; el.onclick = window.googleLogin; el.addEventListener('touchend', window.googleLogin); } });
+  ov.querySelectorAll('[onclick="resetPassword()"]').forEach((el) => { if (!el.__bound) { el.__bound = true; el.onclick = window.resetPassword; el.addEventListener('touchend', window.resetPassword); } });
+  ov.querySelectorAll('[onclick="togglePasswordVisibility()"]').forEach((el) => { if (!el.__bound) { el.__bound = true; el.onclick = window.togglePasswordVisibility; el.addEventListener('touchend', window.togglePasswordVisibility); } });
+  ov.querySelectorAll('[onclick="toggleAuthMode()"]').forEach((el) => { if (!el.__bound) { el.__bound = true; el.onclick = window.toggleAuthMode; el.addEventListener('touchend', window.toggleAuthMode); } });
 }
 bindAuthEvents();
+document.addEventListener('DOMContentLoaded', bindAuthEvents);
+
+function showLoginOverlay() {
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+  bindAuthEvents();
+}
 setInterval(() => {
   if (window.state && window.state.currentView === "upcoming") {
     renderUpcomingView();
   }
 }, 30000);
+setInterval(() => {
+  if (window.state && window.state.currentView === "calendar") {
+    renderCalendarView();
+  }
+}, 60000);
 // shareOrDownloadPDF now delegates to the Capacitor-backed downloadPDF
 if (!window.__appInitCalled) { window.__appInitCalled = true; try { initApp(); } catch (_) {} }
 window.shareOrDownloadPDF = async function () { return window.downloadPDF(); };
+function renderDayView() {
+  const container = document.getElementById('day-view-slots');
+  const dateTitle = document.getElementById('day-view-date-title');
+  const dateStr = window.state.selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  if (dateTitle) dateTitle.textContent = dateStr;
+  if (!container) return;
+  container.innerHTML = '';
+  for (let hour = 6; hour < 22; hour++) {
+    for (let minute of [0, 30]) {
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute === 0 ? '00' : '30'}`;
+      const slotDate = new Date(window.state.selectedDate);
+      slotDate.setHours(hour, minute, 0, 0);
+      const appointmentsHere = (window.state.appointments || []).filter(appt => {
+        const apptDate = new Date(`${appt.date}T${appt.time}`);
+        return apptDate.getTime() === slotDate.getTime();
+      });
+      const slotDiv = document.createElement('div');
+      slotDiv.className = 'relative bg-white dark:bg-gray-900/80 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 overflow-hidden transition-all hover:shadow-xl';
+      if (appointmentsHere.length > 0) {
+        const appt = appointmentsHere[0];
+        const colorClass = SERVICE_COLORS[(appt.serviceColor) || 'indigo'];
+        slotDiv.innerHTML = `
+          <div class="absolute inset-0 ${colorClass.bg} opacity-10"></div>
+          <div class="relative p-4">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="font-bold text-lg ${colorClass.text}">${appt.clientName || 'Unknown'}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300">${appt.serviceName || appt.service || ''}</p>
+                ${appt.phone ? `<p class="text-xs text-gray-500 mt-1">${appt.phone}</p>` : ''}
+              </div>
+              <button onclick="editAppointment('${appt.id}')" class="text-indigo-600 hover:text-indigo-800">
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        slotDiv.innerHTML = `
+          <div class="p-4 flex items-center justify-between text-gray-400">
+            <span class="text-sm font-medium">${timeStr}</span>
+            <span class="text-xs">Available</span>
+          </div>
+        `;
+        slotDiv.onclick = () => openAddAppointment(window.state.selectedDate, timeStr);
+        slotDiv.classList.add('cursor-pointer', 'hover:bg-gray-50', 'dark:hover:bg-gray-800');
+      }
+      container.appendChild(slotDiv);
+    }
+  }
+  const cv = document.getElementById('calendar-view');
+  const dv = document.getElementById('day-view');
+  if (cv) cv.classList.add('hidden');
+  if (dv) dv.classList.remove('hidden');
+}
+window.renderDayView = renderDayView;
+
+function changeCalendarMode(mode) { setCalendarMode(mode); }
+window.changeCalendarMode = changeCalendarMode;
+
+function openAddAppointment(date, timeStr) {
+  window.state.selectedDate = date instanceof Date ? date : new Date(date);
+  changeView('add');
+  setTimeout(() => {
+    const dateEl = document.getElementById('date');
+    const timeEl = document.getElementById('time');
+    if (dateEl) dateEl.value = formatDate(window.state.selectedDate);
+    if (timeEl && timeStr) timeEl.value = timeStr;
+  }, 0);
+}
+window.openAddAppointment = openAddAppointment;

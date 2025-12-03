@@ -38,6 +38,18 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script>
+      if (!window.Capacitor) {
+        window.Capacitor = { Plugins: {}, isNativePlatform: () => false };
+      }
+      if (
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform !== "function"
+      ) {
+        window.Capacitor.isNativePlatform = () =>
+          !!(window.Capacitor && window.Capacitor.Plugins);
+      }
+    </script>
   </head>
   <body>
     <div id="app" class="flex flex-col">
@@ -98,6 +110,44 @@
 
         <div id="app-content">
           <div id="calendar-view" class="hidden fade-in"></div>
+          <div id="day-view" class="hidden fade-in px-4">
+            <div class="flex items-center justify-between mb-6">
+              <button
+                onclick="changeCalendarMode('month')"
+                class="text-indigo-600 hover:text-indigo-800 flex items-center gap-2"
+              >
+                <i class="fas fa-arrow-left"></i>
+                <span class="font-medium">Back to Month</span>
+              </button>
+              <h2
+                class="text-2xl font-bold text-gray-800 dark:text-white"
+                id="day-view-date-title"
+              ></h2>
+              <div class="flex gap-2">
+                <button
+                  onclick="changeSelectedDate(-1)"
+                  class="p-mt-1 text-indigo-600 hover:text-indigo-800"
+                >
+                  <i class="fas fa-chevron-left text-xl"></i>
+                </button>
+                <button
+                  onclick="changeSelectedDate(1)"
+                  class="text-indigo-600 hover:text-indigo-800"
+                >
+                  <i class="fas fa-chevron-right text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-2" id="day-view-slots"></div>
+
+            <button
+              onclick="openAddAppointment(window.state.selectedDate)"
+              class="fixed bottom-24 right-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-2xl w-14 h-14 flex items-center justify-center z-40 transition-all hover:scale-110"
+            >
+              <i class="fas fa-plus text-2xl"></i>
+            </button>
+          </div>
           <div id="upcoming-view" class="hidden fade-in"></div>
           <div id="add-appointment-view" class="hidden fade-in"></div>
           <div id="service-management-view" class="hidden fade-in"></div>
@@ -296,8 +346,12 @@
       </button>
     </div>
 
-    <script src="capacitor.js"></script>
-    <script type="module" src="app.js?v=dayview-v3"></script>
+    <script>
+      if (!window.Capacitor) {
+        window.Capacitor = { Plugins: {} };
+      }
+    </script>
+    <script type="module" src="app.js?v=dayview-v4"></script>
     <div
       id="settings-menu"
       class="fixed inset-0 z-50 hidden"

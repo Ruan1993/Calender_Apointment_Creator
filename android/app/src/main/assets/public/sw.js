@@ -1,8 +1,8 @@
-const CACHE_NAME = "appointment-app-v7";
+const CACHE_NAME = "appointment-app-v8";
 const ASSETS = [
   "./",
   "./index.html",
-  "./app.js?v=dayview-v3",
+  "./app.js?v=dayview-v4",
   "./styles.css",
   "./tailwind.css",
   "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css",
@@ -33,6 +33,8 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+  const isHttp = (() => { try { const u = new URL(req.url); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; } })();
+  if (!isHttp) return;
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -41,7 +43,7 @@ self.addEventListener("fetch", (event) => {
           if (preload) return preload;
           const network = await fetch(req);
           const cache = await caches.open(CACHE_NAME);
-          cache.put(req, network.clone());
+          if (isHttp) cache.put(req, network.clone());
           return network;
         } catch (_) {
           const cache = await caches.open(CACHE_NAME);
@@ -61,7 +63,7 @@ self.addEventListener("fetch", (event) => {
           try {
             if (res && res.status === 200 && (res.type === "basic" || res.type === "cors")) {
               const copy = res.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+              if (isHttp) caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
             }
           } catch {}
           return res;
