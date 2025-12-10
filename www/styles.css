@@ -276,3 +276,7 @@ body.dark .bg-indigo-50 { color: #000 !important; }
 body.dark .bg-indigo-50 .text-gray-800 { color: #000 !important; }
 body.dark .bg-indigo-50 .text-gray-700 { color: #000 !important; }
 body.dark .bg-indigo-50 .text-gray-900 { color: #000 !important; }
+
+/* Dark mode: ensure appointment cards have strong text contrast */
+body.dark .appointment-card { color: #0b1220 !important; }
+body.dark .appointment-card * { color: #0b1220 !important; }

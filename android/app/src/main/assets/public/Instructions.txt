@@ -1,0 +1,163 @@
+Here is the complete solution. This updates your Day View to be a true timeline (absolute positioning) and enables "Click-to-Add" (clicking an empty space creates a booking at that exact time).
+
+Step 1: Add the logic to app.js
+Add these two functions to your app.js. You can place them near renderHourlySchedule.
+
+1. The "Click Handler" Logic This calculates exactly where you clicked in the hour block to determine the minute (e.g., clicking halfway down the 10:00 block sets the time to 10:30).
+
+JavaScript
+
+function handleHourClick(hour, event) {
+  // 1. Calculate click position
+  const rect = event.currentTarget.getBoundingClientRect();
+  const y = event.clientY - rect.top;
+  const height = rect.height;
+  
+  // 2. Convert pixel position to minutes (0-59)
+  const rawMinutes = (y / height) * 60;
+  
+  // 3. Round to nearest 5 minutes for cleaner times
+  const roundedMinutes = Math.round(rawMinutes / 5) * 5;
+  
+  // 4. Handle edge case (60 minutes bumps to next hour)
+  let finalHour = hour;
+  let finalMinutes = roundedMinutes;
+  if (finalMinutes === 60) {
+    finalHour += 1;
+    finalMinutes = 0;
+  }
+
+  // 5. Format string HH:MM
+  const timeString = `${String(finalHour).padStart(2, "0")}:${String(finalMinutes).padStart(2, "0")}`;
+
+  // 6. Save to state and switch view
+  window.state.suggestedTime = timeString;
+  
+  // Optional: If we are on a specific day, ensure the form knows that date
+  // (window.state.selectedDate is already tracked globally, so we are good)
+  
+  changeView("add");
+}
+window.handleHourClick = handleHourClick;
+2. The Updated renderHourlySchedule Replace your existing function with this one. It adds the onclick events, the absolute positioning, and the "Current Time" red line.
+
+JavaScript
+
+function renderHourlySchedule(dayKey, title) {
+  const appts = window.state.appointments.filter((a) => a.date === dayKey);
+  const rows = [];
+  const startHour = 6;
+  const endHour = 21;
+  const hourHeight = 80; // Fixed height per hour (pixels)
+
+  for (let h = startHour; h <= endHour; h++) {
+    // Find appointments in this hour
+    const inHour = appts.filter((a) => {
+      const s = timeToMinutes(a.time || "00:00");
+      const hStart = h * 60;
+      const hEnd = (h + 1) * 60;
+      return s >= hStart && s < hEnd;
+    });
+
+    const items = inHour
+      .map((a) => {
+        const startMins = timeToMinutes(a.time || "00:00");
+        const minutesIntoHour = startMins % 60; 
+        const duration = Number(a.duration) || 30;
+
+        // --- Absolute Positioning Math ---
+        const topPct = (minutesIntoHour / 60) * 100;
+        let heightPx = (duration / 60) * hourHeight;
+        if (heightPx < 28) heightPx = 28; // Min-height for readability
+
+        // Completion & Styling Logic
+        const endMs = new Date(`${dayKey}T${a.time}`).getTime() + (duration * 60000);
+        const isCompleted = Date.now() >= endMs;
+        let badgeClass = "bg-indigo-100 border-indigo-200 text-indigo-800";
+        
+        if (a.serviceDetails && a.serviceDetails.length > 0) {
+           const c = SERVICE_COLORS[a.serviceDetails[0].color || 'indigo'];
+           if(c) badgeClass = `${c.badgeBg} ${c.border} ${c.badgeText}`;
+        } else if (isCompleted) {
+            badgeClass = "bg-gray-100 border-gray-200 text-gray-500 opacity-75";
+        }
+
+        // IMPORTANT: event.stopPropagation() prevents clicking an appointment 
+        // from triggering the "Create New" click handler behind it.
+        return `
+          <div onclick="editAppointment('${a.id}'); event.stopPropagation();" 
+               class="absolute w-[95%] left-[2%] border-l-4 rounded shadow-sm px-2 py-1 text-xs cursor-pointer hover:brightness-95 transition z-10 overflow-hidden ${badgeClass} appointment-card"
+               style="top: ${topPct}%; height: ${heightPx}px;">
+            <div class="flex justify-between items-start pointer-events-none">
+              <span class="font-bold truncate mr-1">${a.clientName}</span>
+              <span class="font-mono opacity-80">${a.time}</span>
+            </div>
+            <div class="truncate opacity-75 text-[10px] pointer-events-none">${a.service || 'No Service'}</div>
+          </div>
+        `;
+      })
+      .join("");
+
+    // The container div now has onclick="handleHourClick..."
+    rows.push(
+      `<div class="grid grid-cols-[50px_1fr] border-b border-gray-100 relative" style="height: ${hourHeight}px;">
+          <div class="text-xs text-gray-400 font-medium text-right pr-2 pt-1 -mt-2 bg-white z-20 relative select-none">
+            ${String(h).padStart(2, "0")}:00
+          </div>
+          <div onclick="handleHourClick(${h}, event)" 
+               class="relative border-l border-gray-100 hover:bg-gray-50 active:bg-indigo-50 transition-colors cursor-crosshair">
+             <div class="absolute top-1/2 w-full border-t border-dotted border-gray-200 pointer-events-none"></div>
+             ${items}
+          </div>
+       </div>`
+    );
+  }
+
+  // Current Time Indicator Helper
+  const now = new Date();
+  let timeIndicator = '';
+  if (formatDate(now) === dayKey) {
+      const currentH = now.getHours();
+      const currentM = now.getMinutes();
+      if (currentH >= startHour && currentH <= endHour) {
+          const topPx = ((currentH - startHour) * hourHeight) + ((currentM / 60) * hourHeight);
+          timeIndicator = `<div class="absolute w-full border-t-2 border-red-500 z-50 pointer-events-none flex items-center" style="top: ${topPx}px; left: 50px; width: calc(100% - 50px);"><div class="w-2 h-2 bg-red-500 rounded-full -ml-1"></div></div>`;
+      }
+  }
+
+  return `
+    <div class="bg-white rounded-xl shadow border border-gray-100 mb-20 overflow-hidden select-none relative">
+      <h3 class="p-3 text-lg font-bold text-gray-800 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <span>${title}</span>
+        <span class="text-xs font-normal text-gray-500">Tap empty slot to add</span>
+      </h3>
+      <div class="relative">
+        ${rows.join("")}
+        ${timeIndicator}
+      </div>
+    </div>
+  `;
+}
+Step 2: Connect it to the Add Form
+Finally, we need to tell the "Add Appointment" form to look for that suggested time we just saved.
+
+Locate the renderAddAppointmentView function in app.js and find the lines defining defaultTime. Replace them with this:
+
+JavaScript
+
+// Inside renderAddAppointmentView...
+
+  const defaultDate = formatDate(window.state.selectedDate);
+  const nowTime = new Date();
+  
+  // NEW: Check if we clicked a slot, otherwise use current time
+  let defaultTime;
+  if (window.state.suggestedTime) {
+      defaultTime = window.state.suggestedTime;
+      // Clear it so it doesn't stick if we navigate away and come back
+      window.state.suggestedTime = null; 
+  } else {
+      defaultTime = `${String(nowTime.getHours()).padStart(2, "0")}:${String(nowTime.getMinutes()).padStart(2, "0")}`;
+  }
+
+// ... rest of the function remains the same

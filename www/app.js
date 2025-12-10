@@ -16,6 +16,7 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signInWithCredential,
+  sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getFirestore,
@@ -50,6 +51,8 @@ window.signInWithPopup = signInWithPopup;
 window.signInWithRedirect = signInWithRedirect;
 window.getRedirectResult = getRedirectResult;
 window.signInWithCredential = signInWithCredential;
+window.sendPasswordResetEmail = sendPasswordResetEmail;
+
 window.getFirestore = getFirestore;
 window.doc = doc;
 window.setDoc = setDoc;
@@ -248,15 +251,31 @@ function toggleSettingsMenu() {
   if (ccInput) ccInput.value = getDefaultCountryCode();
   const lang = getLanguage();
   if (langSel) langSel.value = lang;
+  const willOpen = menu.classList.contains('hidden');
   menu.classList.toggle('hidden');
+  const bg = document.getElementById('settings-menu-bg');
+  const panel = document.getElementById('settings-menu-panel');
   if (!menu.classList.contains('hidden')) {
+    if (bg) bg.onclick = () => { try { toggleSettingsMenu(); } catch {} };
+    if (window.__settingsHandler) {
+      try { document.removeEventListener('click', window.__settingsHandler); } catch {}
+      window.__settingsHandler = null;
+    }
     const handler = (e) => {
-      if (!menu.contains(e.target)) {
-        menu.classList.add('hidden');
-        document.removeEventListener('click', handler);
+      if (!panel || !panel.contains(e.target)) {
+        if (!menu.classList.contains('hidden')) menu.classList.add('hidden');
+        if (bg) bg.onclick = null;
+        window.__settingsHandler = null;
       }
     };
-    setTimeout(() => document.addEventListener('click', handler), 0);
+    window.__settingsHandler = handler;
+    setTimeout(() => document.addEventListener('click', handler, { once: true, capture: true }), 0);
+  } else {
+    if (bg) bg.onclick = null;
+    if (window.__settingsHandler) {
+      try { document.removeEventListener('click', window.__settingsHandler); } catch {}
+      window.__settingsHandler = null;
+    }
   }
 }
 window.toggleSettingsMenu = toggleSettingsMenu;
@@ -470,6 +489,32 @@ const SERVICE_COLORS = {
   },
 };
 
+const APPOINTMENT_PASTELS = [
+  { bg: "bg-emerald-50", border: "border-emerald-100", text: "text-emerald-800" },
+  { bg: "bg-amber-50", border: "border-amber-100", text: "text-amber-800" },
+  { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-800" },
+  { bg: "bg-violet-50", border: "border-violet-100", text: "text-violet-800" },
+  { bg: "bg-rose-50", border: "border-rose-100", text: "text-rose-800" },
+  { bg: "bg-indigo-50", border: "border-indigo-100", text: "text-indigo-800" },
+];
+
+const SERVICE_ACCENT_HEX = {
+  indigo: "#6366f1",
+  rose: "#f43f5e",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  sky: "#0ea5e9",
+  violet: "#7c3aed",
+  cyan: "#06b6d4",
+  pink: "#ec4899",
+  red: "#ef4444",
+  orange: "#f97316",
+  lime: "#84cc16",
+  teal: "#14b8a6",
+  blue: "#3b82f6",
+  purple: "#8b5cf6",
+};
+
 function formatHM(totalMinutes) {
   const m = Math.max(0, Number(totalMinutes) || 0);
   const h = Math.floor(m / 60);
@@ -498,55 +543,113 @@ function renderHourlySchedule(dayKey, title) {
   const rows = [];
   const startHour = 6;
   const endHour = 21;
+  const hourHeight = 80;
+  const apptsSorted = appts.slice().sort((a, b) => {
+    const aMs = new Date(`${a.date}T${a.time || '00:00'}`).getTime();
+    const bMs = new Date(`${b.date}T${b.time || '00:00'}`).getTime();
+    return aMs - bMs;
+  });
+  const colorIndexById = new Map(apptsSorted.map((a, i) => [a.id, i]));
+  const isDark = document.body.classList.contains('dark');
   for (let h = startHour; h <= endHour; h++) {
-    const slotStart = h * 60;
-    const slotEnd = (h + 1) * 60;
-    const inHour = appts
+    const inHour = appts.filter((a) => {
+      const s = timeToMinutes(a.time || "00:00");
+      const hStart = h * 60;
+      const hEnd = (h + 1) * 60;
+      return s >= hStart && s < hEnd;
+    });
+    const items = inHour
       .map((a) => {
-        const s = timeToMinutes(a.time || "00:00");
-        const e = s + (Number(a.duration) || 0);
-        if (e <= slotStart || s >= slotEnd) return null;
-        const from = Math.max(slotStart, s);
-        const to = Math.min(slotEnd, e);
-        const endTimeHM = minutesToTime(e);
-        const endMs = new Date(`${dayKey}T${endTimeHM}`).getTime();
+        const startMins = timeToMinutes(a.time || "00:00");
+        const minutesIntoHour = startMins % 60;
+        const duration = Number(a.duration) || 30;
+        const topPct = (minutesIntoHour / 60) * 100;
+        let heightPx = (duration / 60) * hourHeight;
+        if (heightPx < 25) heightPx = 25;
+        const endMs = new Date(`${dayKey}T${a.time}`).getTime() + duration * 60000;
         const isCompleted = Date.now() >= endMs;
-        return {
-          clientName: a.clientName,
-          start: minutesToTime(from),
-          end: minutesToTime(to),
-          phone: a.phone || "",
-          id: a.id,
-          completed: isCompleted,
-        };
+        const idx = colorIndexById.has(a.id) ? colorIndexById.get(a.id) : 0;
+        const p = APPOINTMENT_PASTELS[idx % APPOINTMENT_PASTELS.length];
+        let badgeClass = `${p.bg} ${p.border} ${isDark ? 'text-slate-900' : p.text}`;
+        if (isCompleted) badgeClass = "bg-gray-100 border-gray-200 text-gray-500 opacity-75";
+        let accentHex = SERVICE_ACCENT_HEX.indigo;
+        if (Array.isArray(a.serviceDetails) && a.serviceDetails.length) {
+          const key = a.serviceDetails[0].color || "indigo";
+          accentHex = SERVICE_ACCENT_HEX[key] || accentHex;
+        }
+        if (isCompleted) accentHex = "#d1d5db";
+        const endStr = minutesToTime(startMins + duration);
+        return `
+          <div onclick="editAppointment('${a.id}'); event.stopPropagation();"
+               class="appointment-card absolute w-[95%] left-[2%] border-l-4 rounded shadow-sm px-2 py-1 text-xs cursor-pointer hover:brightness-95 transition z-10 overflow-hidden ${badgeClass}"
+               style="top: ${topPct}%; height: ${heightPx}px; min-height: 24px; border-left-color: ${accentHex};">
+            <div class="flex justify-between items-start">
+              <span class="font-bold truncate mr-1">${a.clientName}</span>
+              <span class="font-mono opacity-80">${a.time} - ${endStr}</span>
+            </div>
+            <div class="truncate opacity-75 text-[10px]">${a.service || "No Service"}</div>
+          </div>
+        `;
       })
-      .filter(Boolean);
-    const items =
-      inHour.length === 0
-        ? '<span class="text-gray-400">—</span>'
-        : inHour
-            .map(
-              (x) =>
-                `<div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded px-2 py-1 mt-1">
-                          <span class="text-xs font-medium text-gray-800 truncate" title="${x.clientName} ${x.start}-${x.end}">${x.clientName} (${x.start}-${x.end}) ${x.completed ? '<span class="ml-1 text-red-600 font-semibold">Completed</span>' : ''}</span>
-                          <button onclick="editAppointment('${x.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs"><i class="fas fa-edit"></i></button>
-                        </div>`
-            )
-            .join("");
+      .join("");
     rows.push(
-      `<div class="grid grid-cols-[64px_1fr] gap-2 items-start">
-                <div class="text-xs text-gray-500 font-semibold">${String(h).padStart(2, "0")}:00</div>
-                <div>${items}</div>
-             </div>`
+      `<div class="grid grid-cols-[50px_1fr] border-b border-gray-100 relative" style="height: ${hourHeight}px;">
+          <div class="text-xs text-gray-400 font-medium text-right pr-2 pt-1 -mt-2.5 bg-white z-20 relative">
+            ${String(h).padStart(2, "0")}:00
+          </div>
+          <div onclick="handleHourClick(${h}, event)" class="relative border-l border-gray-100 hover:bg-gray-50 active:bg-indigo-50 transition-colors cursor-crosshair">
+             <div class="absolute top-1/2 w-full border-t border-dotted border-gray-200 pointer-events-none"></div>
+             ${items}
+          </div>
+       </div>`
     );
   }
   return `
-          <div class="bg-white rounded-xl shadow border border-gray-100 p-3 mb-4">
-            <h3 class="text-lg font-semibold text-gray-800 mb-2">${title}</h3>
-            <div class="space-y-1">${rows.join("")}</div>
-          </div>
-        `;
+    <div class="bg-white rounded-xl shadow border border-gray-100 mb-20 overflow-hidden select-none">
+      <h3 class="p-3 text-lg font-bold text-gray-800 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <span>${title}</span>
+        <span class="text-xs font-normal text-gray-500">Tap empty slot to add</span>
+      </h3>
+      <div class="relative">
+        ${rows.join("")}
+        ${renderCurrentTimeIndicator(dayKey, startHour, hourHeight)}
+      </div>
+    </div>
+  `;
 }
+
+function renderCurrentTimeIndicator(dayKey, startHour, hourHeight) {
+  const now = new Date();
+  const todayKey = formatDate(now);
+  if (dayKey !== todayKey) return "";
+  const currentH = now.getHours();
+  if (currentH < startHour || currentH > 21) return "";
+  const currentM = now.getMinutes();
+  const topPx = (currentH - startHour) * hourHeight + (currentM / 60) * hourHeight;
+  return `
+    <div class="absolute w-full border-t-2 border-red-500 z-50 pointer-events-none flex items-center" style="top: ${topPx}px; left: 50px; width: calc(100% - 50px);">
+      <div class="w-2 h-2 bg-red-500 rounded-full -ml-1"></div>
+    </div>
+  `;
+}
+
+function handleHourClick(hour, event) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const y = event.clientY - rect.top;
+  const height = rect.height;
+  const rawMinutes = (y / height) * 60;
+  const roundedMinutes = Math.round(rawMinutes / 5) * 5;
+  let finalHour = hour;
+  let finalMinutes = roundedMinutes;
+  if (finalMinutes === 60) {
+    finalHour += 1;
+    finalMinutes = 0;
+  }
+  const timeString = `${String(finalHour).padStart(2, "0")}:${String(finalMinutes).padStart(2, "0")}`;
+  window.state.suggestedTime = timeString;
+  changeView("add");
+}
+window.handleHourClick = handleHourClick;
 
 function editAppointment(id) {
   window.state.editingAppointmentId = id;
@@ -625,14 +728,21 @@ async function pickContact() {
     const cap = window.Capacitor;
     const plugin = cap && cap.Plugins ? (cap.Plugins.Contacts || cap.Plugins.ContactsPlugin) : (window.Contacts || null);
     if (plugin) {
+      let granted = true;
       if (typeof plugin.checkPermissions === "function") {
         try {
           const status = await plugin.checkPermissions();
-          const granted = status && (status.granted === true || status.contacts === "granted");
+          granted = !!(status && (status.granted === true || status.contacts === "granted"));
           if (!granted && typeof plugin.requestPermissions === "function") {
-            await plugin.requestPermissions();
+            const req = await plugin.requestPermissions();
+            granted = !!(req && (req.granted === true || req.contacts === "granted"));
           }
-        } catch (_) {}
+        } catch (_) { granted = false; }
+      }
+      if (!granted) {
+        displayMessage("Contacts permission denied.", "error", 3000);
+        openContactsModal();
+        return;
       }
       let selected = null;
       if (typeof plugin.pickContact === "function") {
@@ -652,12 +762,10 @@ async function pickContact() {
           displayMessage("Contact details added.");
         }
       } else {
-        displayMessage("No contact selected or plugin unavailable.");
+        displayMessage("No contact selected.");
       }
     } else if (navigator.contacts && navigator.contacts.select) {
-      const contacts = await navigator.contacts.select(["name", "tel"], {
-        multiple: false,
-      });
+      const contacts = await navigator.contacts.select(["name", "tel"], { multiple: false });
       if (contacts && contacts.length) {
         const c = contacts[0];
         const name = Array.isArray(c.name) ? c.name[0] : c.name;
@@ -670,6 +778,7 @@ async function pickContact() {
         if (form) {
           if (name) form.clientName.value = name;
           if (tel) form.phone.value = tel;
+          displayMessage("Contact details added.");
         }
       } else {
         openContactsModal();
@@ -720,8 +829,10 @@ window.handleAuth = async function () {
   const errorMsg = document.getElementById("login-error");
   const email = emailEl ? emailEl.value : "";
   const password = passwordEl ? passwordEl.value : "";
+  const emailTrim = String(email || '').trim();
+  const passwordTrim = String(password || '');
   if (errorMsg) errorMsg.classList.add("hidden");
-  if (!email || !password) {
+  if (!emailTrim || !passwordTrim) {
     if (errorMsg) {
       errorMsg.textContent = "Please enter both email and password.";
       errorMsg.classList.remove("hidden");
@@ -737,10 +848,15 @@ window.handleAuth = async function () {
     return;
   }
   try {
+    const overlay = document.getElementById("login-overlay");
     if (window.authMode === "login") {
-      await window.signInWithEmailAndPassword(a, email, password);
+      await window.signInWithEmailAndPassword(a, emailTrim, passwordTrim);
+      if (overlay) overlay.classList.add("hidden");
+      displayMessage('Signed in', 'success');
     } else {
-      await window.createUserWithEmailAndPassword(a, email, password);
+      await window.createUserWithEmailAndPassword(a, emailTrim, passwordTrim);
+      if (overlay) overlay.classList.add("hidden");
+      displayMessage('Account created and signed in', 'success');
     }
   } catch (error) {
     console.error("Authentication failed:", error);
@@ -818,6 +934,31 @@ window.togglePasswordVisibility = function () {
   if (icon) {
     icon.classList.toggle("fa-eye", !isHidden);
     icon.classList.toggle("fa-eye-slash", isHidden);
+  }
+};
+
+window.resetPassword = async function () {
+  const emailEl = document.getElementById("auth-email");
+  const email = emailEl ? String(emailEl.value || "").trim() : "";
+  const errorMsg = document.getElementById("login-error");
+  if (errorMsg) errorMsg.classList.add("hidden");
+  if (!email) {
+    if (errorMsg) {
+      errorMsg.textContent = "Please enter your email address first.";
+      errorMsg.classList.remove("hidden");
+    }
+    return;
+  }
+  const a = auth || (window.getAuth ? window.getAuth() : null);
+  try {
+    await window.sendPasswordResetEmail(a, email);
+    displayMessage(`Password reset email sent to ${email}`);
+  } catch (error) {
+    console.error(error);
+    if (errorMsg) {
+      errorMsg.textContent = "Error sending reset email: " + (error.message || String(error));
+      errorMsg.classList.remove("hidden");
+    }
   }
 };
 
@@ -914,6 +1055,116 @@ function getAppointmentsRef() {
   }
   return window.collection(db, `artifacts/${appId}/users/${userId}/appointments`);
 }
+
+async function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = String(reader.result || '');
+        const b64 = res.includes(',') ? res.split(',')[1] : res;
+        resolve(b64);
+      };
+      reader.readAsDataURL(blob);
+    } catch {
+      resolve('');
+    }
+  });
+}
+
+window.exportAppointments = async function (startDate, endDate) {
+  const btn = document.getElementById('export-pdf-btn');
+  try {
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); btn.querySelector('span').textContent = 'Generating...'; }
+    if (!window.jspdf) throw new Error('PDF library loading...');
+    const cap = window.Capacitor;
+    const isNative = cap && typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : !!(cap && cap.Plugins);
+    const Filesystem = cap && cap.Plugins ? cap.Plugins.Filesystem : null;
+    const Share = cap && cap.Plugins ? cap.Plugins.Share : null;
+    const Directory = { Cache: 'CACHE' };
+    const nameEl = document.getElementById('export-name');
+    const startEl = document.getElementById('export-start');
+    const endEl = document.getElementById('export-end');
+    const customName = nameEl && nameEl.value ? nameEl.value : '';
+    const startStr = startDate instanceof Date ? startDate.toISOString().split('T')[0] : (startEl ? startEl.value : '');
+    const endStr = endDate instanceof Date ? endDate.toISOString().split('T')[0] : (endEl ? endEl.value : '');
+    const allAppts = Array.isArray(window.state.appointments) ? window.state.appointments : [];
+    const filtered = allAppts.filter((a) => {
+      if (startStr && String(a.date) < startStr) return false;
+      if (endStr && String(a.date) > endStr) return false;
+      return true;
+    });
+    if (!filtered.length) { alert('No appointments found in this date range.'); return; }
+    const sorted = filtered.sort((a, b) => {
+      const d1 = new Date(`${a.date}T${a.time || '00:00'}`);
+      const d2 = new Date(`${b.date}T${b.time || '00:00'}`);
+      return d1 - d2;
+    });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.setTextColor(79, 70, 229);
+    const title = customName ? `Schedule for ${customName}` : 'Appointment Schedule';
+    doc.text(title, 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    let rangeText = 'All upcoming & past appointments';
+    if (startStr || endStr) rangeText = `Range: ${startStr || 'Start'} to ${endStr || 'End'}`;
+    doc.text(rangeText, 14, 28);
+    function formatTimeRange(start, durationStr) {
+      if (!start) return '';
+      const duration = Number(durationStr) || 0;
+      const [h, m] = String(start).split(':').map(Number);
+      const totalMins = (h || 0) * 60 + (m || 0) + duration;
+      const endH = Math.floor(totalMins / 60) % 24;
+      const endM = totalMins % 60;
+      return `${start} - ${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    }
+    const tableRows = sorted.map((appt) => {
+      const d = new Date(appt.date);
+      const dateDisplay = isNaN(d) ? String(appt.date || '') : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const serviceList = Array.isArray(appt.serviceDetails) ? appt.serviceDetails.map((s) => s && s.name).filter(Boolean).join(', ') : '';
+      const timeDisplay = formatTimeRange(appt.time, appt.duration);
+      return [dateDisplay, timeDisplay, String(appt.clientName || ''), String(appt.phone || ''), serviceList, String(appt.notes || '')];
+    });
+    doc.autoTable({ startY: 35, head: [['Date', 'Time', 'Client', 'Phone', 'Service', 'Notes']], body: tableRows, theme: 'grid', headStyles: { fillColor: [79, 70, 229] }, styles: { fontSize: 9, cellPadding: 3 }, columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 25 }, 2: { cellWidth: 30 }, 5: { cellWidth: 35 } } });
+    const filename = `Schedule_${startStr || 'All'}_to_${endStr || 'All'}.pdf`;
+    const blob = doc.output('blob');
+    if (isNative && Filesystem && Share) {
+      const base64 = await blobToBase64(blob);
+      const { uri } = await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache })
+        .then(() => Filesystem.getUri({ path: filename, directory: Directory.Cache }));
+      await Share.share({ title: 'Appointment Report', url: uri, dialogTitle: 'Share PDF' });
+      setTimeout(() => { Filesystem.deleteFile({ path: filename, directory: Directory.Cache }).catch(() => {}); }, 60000);
+      return;
+    }
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Appointment Schedule', text: 'Here is the exported schedule PDF.' });
+      return;
+    }
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+      return;
+    } catch {
+      try {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => { URL.revokeObjectURL(url); }, 60000);
+        return;
+      } catch {}
+    }
+    doc.save(filename);
+  } catch (error) {
+    alert('Export failed—check permissions');
+  } finally {
+    if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); btn.querySelector('span').textContent = 'Share or Download PDF'; }
+  }
+};
+
+window.downloadPDF = async function () { return window.exportAppointments(); };
 
 function listenForAppointments() {
   const appointmentsRef = getAppointmentsRef();
@@ -1620,13 +1871,14 @@ function generateDayAppointmentListHTML(dayKey, displayTitle, isCompact = false)
       const isCompleted = Date.now() >= endMs;
       const completedNoteHTML = isCompleted ? `<p class=\"text-xs font-semibold text-red-600 mt-1\"><i class=\"fas fa-circle-check w-3 text-center\"></i> Appointment Completed</p>` : "";
 
+      const endStr = minutesToTime(timeToMinutes(appt.time || "00:00") + (Number(appt.duration) || 30));
       listHTML += `
                               <div class="bg-white p-3 mb-2 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start">
                                   <div class="flex-grow">
                                       <p class="text-xs font-semibold uppercase text-indigo-500">${serviceDisplay}</p>
                                       <h4 class="text-base font-bold text-gray-900">${appt.clientName}</h4>
                                       <div class="text-xs text-gray-600 mt-1">
-                                          <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min)</span></p>
+                                          <p><i class="fas fa-clock w-3 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} - ${endStr}</span></p>
                                           ${phone ? `<p class=\"mt-1\"><i class=\"fas fa-phone w-3 text-center text-indigo-400\"></i> <span class=\"ml-1\">${phone}</span></p>` : ""}
                                           ${appt.notes && !isCompact ? `<p class="mt-1 text-xs italic text-gray-500"><i class="fas fa-sticky-note w-3 text-center"></i> ${appt.notes}</p>` : ""}
                                       </div>
@@ -1903,8 +2155,8 @@ function renderUpcomingView() {
                     </div>
                 `;
   } else if (mode === "list") {
-    upcomingAppts.forEach((appt) => {
-      const dateDisplay = new Date(`${appt.date}T${appt.time || "00:00"}`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      upcomingAppts.forEach((appt) => {
+        const dateDisplay = new Date(`${appt.date}T${appt.time || "00:00"}`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 
       const phone = (appt.phone || "").trim();
       const waNumber = normalizeWhatsAppNumber(phone);
@@ -1916,23 +2168,24 @@ function renderUpcomingView() {
       const endMs = startMs + ((Number(appt.duration) || 30) * 60000);
       const isCompleted = Date.now() >= endMs;
       const completedHTML = isCompleted ? `<p class="mt-1 text-xs font-semibold text-emerald-600"><i class="fas fa-check-circle w-4 text-center"></i> Appointment Completed</p>` : "";
-      const serviceBadgesHTML = Array.isArray(appt.serviceDetails) && appt.serviceDetails.length
-        ? appt.serviceDetails
-            .map((s) => {
-              const key = s.color || "indigo";
-              const c = SERVICE_COLORS[key] || SERVICE_COLORS.indigo;
-              return `<span class="inline-flex items-center text-xs font-medium px-2 py-1 rounded ${c.badgeBg} ${c.badgeText} mr-1 mb-1">${s.name}</span>`;
-            })
-            .join("")
-        : `<span class="text-xs font-semibold uppercase text-indigo-500">${appt.service || "Service N/A"}</span>`;
-      listHTML += `
+        const endStr = minutesToTime(timeToMinutes(appt.time || "00:00") + (Number(appt.duration) || 30));
+        const serviceBadgesHTML = Array.isArray(appt.serviceDetails) && appt.serviceDetails.length
+          ? appt.serviceDetails
+              .map((s) => {
+                const key = s.color || "indigo";
+                const c = SERVICE_COLORS[key] || SERVICE_COLORS.indigo;
+                return `<span class="inline-flex items-center text-xs font-medium px-2 py-1 rounded ${c.badgeBg} ${c.badgeText} mr-1 mb-1">${s.name}</span>`;
+              })
+              .join("")
+          : `<span class="text-xs font-semibold uppercase text-indigo-500">${appt.service || "Service N/A"}</span>`;
+        listHTML += `
                         <div class="bg-white pt-6 pr-4 pb-16 pl-4 rounded-xl shadow-lg border border-indigo-100 flex justify-between items-start" style="position: relative;">
                             <div class="flex-grow">
                                 <div class="flex flex-wrap">${serviceBadgesHTML}</div>
                                 <h4 class="text-lg font-bold text-gray-900">${appt.clientName}</h4>
                                 <div class="text-sm text-gray-600 mt-1 space-y-0.5">
                                     <p><i class="fas fa-calendar-day w-4 text-center text-indigo-500"></i> <span class="ml-1 font-bold text-indigo-700">${dateDisplay}</span></p>
-                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} (${appt.duration || 30} min • ${formatHM(appt.duration || 30)})</span></p>
+                                    <p><i class="fas fa-clock w-4 text-center text-indigo-400"></i> <span class="ml-1">${appt.time} - ${endStr}</span></p>
                                     ${completedHTML}
                                     ${phone ? `<p><i class="fas fa-phone w-4 text-center text-indigo-400"></i> <span class="ml-1">${phone}</span></p>` : ""}
                                 </div>
@@ -1950,7 +2203,7 @@ function renderUpcomingView() {
                             <a href="${gcalLink}" target="_blank" class="px-2 py-1 text-xs bg-teal-600 text-white rounded-md hover:bg-teal-700 transition" style="position: absolute; right: 12px; bottom: 20px; z-index: 10;">Add to Google Calendar</a>
                         </div>
                     `;
-    });
+      });
     listHTML += `</div>`;
   } else {
     const selectedDate = window.state.selectedDate;
@@ -2043,7 +2296,13 @@ function renderAddAppointmentView() {
 
   const defaultDate = formatDate(window.state.selectedDate);
   const nowTime = new Date();
-  const defaultTime = `${String(nowTime.getHours()).padStart(2, "0")}:${String(nowTime.getMinutes()).padStart(2, "0")}`;
+  let defaultTime;
+  if (window.state.suggestedTime) {
+    defaultTime = window.state.suggestedTime;
+    window.state.suggestedTime = null;
+  } else {
+    defaultTime = `${String(nowTime.getHours()).padStart(2, "0")}:${String(nowTime.getMinutes()).padStart(2, "0")}`;
+  }
 
   const serviceOptions = window.state.services
     .map((service) => {
@@ -2313,3 +2572,5 @@ setInterval(() => {
     renderUpcomingView();
   }
 }, 30000);
+// shareOrDownloadPDF now delegates to the Capacitor-backed downloadPDF
+window.shareOrDownloadPDF = async function () { return window.downloadPDF(); };

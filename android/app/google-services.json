@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1083294283084-8m497gd4da4cago8cs431d7n92dggn0g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rc.appointmentmaker",
+            "certificate_hash": "f2213ac6a7cdaeee09d77d20f74eef071b314935"
+          }
+        },
+        {
           "client_id": "1083294283084-dfc4606rr7r6g4qgc56t3vmo6ihqkkol.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
